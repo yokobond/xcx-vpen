@@ -1,0 +1,14 @@
+{
+  "en": {
+    "xcxVPen.name": "Vector Pen",
+    "xcxVPen.doIt": "do it [SCRIPT]"
+  },
+  "ja": {
+    "xcxVPen.name": "Vector Pen",
+    "xcxVPen.doIt": "[SCRIPT] を実行する"
+  },
+  "ja-Hira": {
+    "xcxVPen.name": "Vector Pen",
+    "xcxVPen.doIt": "[SCRIPT] をじっこうする"
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "en": {
+    "xcxVPen.entry.name": "Vector Pen",
+    "xcxVPen.entry.description": "Description of this extension"
+  },
+  "ja": {
+    "xcxVPen.entry.name": "Vector Pen",
+    "xcxVPen.entry.description": "拡張機能の説明"
+  },
+  "ja-Hira": {
+    "xcxVPen.entry.name": "Vector Pen",
+    "xcxVPen.entry.description": "かくちょうきのうのせつめい"
+  }
+}
