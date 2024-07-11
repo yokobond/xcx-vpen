@@ -32806,18 +32806,6 @@ var FileSaver = /*@__PURE__*/getDefaultExportFromCjs(FileSaver_minExports);
 var MM_PER_PX = 25.4 / 96;
 
 /**
- * Enum for pen color parameter values.
- * @readonly
- * @enum {string}
- */
-var ColorParam = {
-  COLOR: 'color',
-  SATURATION: 'saturation',
-  BRIGHTNESS: 'brightness',
-  TRANSPARENCY: 'transparency'
-};
-
-/**
  * Formatter which is used for translation.
  * This will be replaced which is used in the runtime.
  * @param {object} messageData - format-message object
@@ -32877,30 +32865,7 @@ var VPenBlocks = /*#__PURE__*/function () {
     runtime.on('targetWasCreated', this.onTargetCreated);
     runtime.on('RUNTIME_DISPOSED', this.clearAll.bind(this));
   }
-
-  /**
-   * Initialize color parameters menu with localized strings
-   * @returns {array} of the localized text and values for each menu element
-   * @private
-   */
   return _createClass$1(VPenBlocks, [{
-    key: "_initColorParam",
-    value: function _initColorParam() {
-      return [{
-        text: 'color',
-        value: ColorParam.COLOR
-      }, {
-        text: 'saturation',
-        value: ColorParam.SATURATION
-      }, {
-        text: 'brightness',
-        value: ColorParam.BRIGHTNESS
-      }, {
-        text: 'transparency',
-        value: ColorParam.TRANSPARENCY
-      }];
-    }
-  }, {
     key: "_mmToPx",
     value: function _mmToPx(mm) {
       return mm / MM_PER_PX;
@@ -32956,11 +32921,12 @@ var VPenBlocks = /*#__PURE__*/function () {
      * @param {Target} target - the target to query.
      * @return {object} - the pen state.
      * @property {int} skinID - the ID of the renderer Skin corresponding to the pen layer.
-     * @property {SVG.Path} penPath - the current pen line.
-     * @property {SVG.Container} drawing - the container for the pen lines.
+     * @property {Path} penPath - the current pen line.
+     * @property {Container} drawing - the container for the pen lines.
      * @property {object} penAttributes - the pen attributes.
      * @property {Array.<number>} penAttributes.color3b - the pen color[RGB 0-255].
      * @property {number} penAttributes.diameter - the pen diameter[mm].
+     * @property {object} referencePoint - the reference point for the plotter pen.
      * @private
      */
   }, {
@@ -33010,10 +32976,17 @@ var VPenBlocks = /*#__PURE__*/function () {
     key: "_startPenPath",
     value: function _startPenPath(target) {
       var penState = this._getPenState(target);
+      if (penState.penType === VPenBlocks.PEN_TYPES.PLOTTER) {
+        if (penState.referencePoint) {
+          penState.penPath.array().pop();
+          penState.referencePoint = null;
+        }
+      }
       if (penState.penPath) {
         if (penState.penPath.array().length === 1) {
-          // If the pen line only has one point, it hasn't been drawn yet.
-          this._addLineToPenPath(penState.penPath, target.x, target.y);
+          // If the pen line only has one point, it should be a dot.
+          penState.penPath.array().push(['L'].concat(_toConsumableArray(penState.penPath.array()[0].slice(1))));
+          penState.penPath.plot(penState.penPath.array());
         }
       }
       var penPath = penState.drawing.path(['M'].concat(_toConsumableArray(this._mapToSVGViewBox(target.x, target.y))));
@@ -33121,9 +33094,12 @@ var VPenBlocks = /*#__PURE__*/function () {
       if (sourceTarget) {
         var penState = sourceTarget.getCustomState(VPenBlocks.STATE_KEY);
         if (penState) {
+          // @TODO: Design a way to clone the skin.
           newTarget.setCustomState(VPenBlocks.STATE_KEY, Clone$2.simple(penState));
           if (penState.penPath) {
-            newTarget.addListener(RenderedTarget$1.EVENT_TARGET_MOVED, this.onTargetMoved);
+            if (penState.penType === VPenBlocks.PEN_TYPES.TRAIL) {
+              newTarget.addListener(RenderedTarget$1.EVENT_TARGET_MOVED, this.onTargetMoved);
+            }
           }
         }
       }
@@ -33146,13 +33122,41 @@ var VPenBlocks = /*#__PURE__*/function () {
         // If the pen is up, there's nothing to draw.
         return;
       }
+      if (penState.penType === VPenBlocks.PEN_TYPES.PLOTTER) {
+        // Display the pen path for current position.
+        if (penState.referencePoint) {
+          penPath.array().pop();
+        }
+        penState.referencePoint = null;
+      }
       if (isForce) {
         // Only move the pen if the movement isn't forced (ie. dragged).
         // This prevents the pen from drawing when the sprite is dragged.
         this._startPenPath(target);
       } else {
+        penState.referencePoint = {
+          x: target.x,
+          y: target.y
+        };
         this._addLineToPenPath(penPath, target.x, target.y);
       }
+      this._updatePenSkinFor(target);
+    }
+  }, {
+    key: "plot",
+    value: function plot(args, util) {
+      var target = util.target;
+      var penState = this._getPenState(target);
+      var penPath = penState.penPath;
+      if (!penPath) {
+        // If there's no line started, there's nothing to end.
+        return;
+      }
+      if (penState.referencePoint) {
+        penPath.array().pop();
+        penState.referencePoint = null;
+      }
+      this._addLineToPenPath(penPath, target.x, target.y);
       this._updatePenSkinFor(target);
     }
 
@@ -33166,10 +33170,13 @@ var VPenBlocks = /*#__PURE__*/function () {
     value: function penDown(args, util) {
       var target = util.target;
       var penState = this._getPenState(target);
-      if (penState.penPath) {
-        // If there's already a line started, end it.
-        return;
+      if (penState.penType === args.PEN_TYPE) {
+        if (penState.penPath) {
+          // If there's already a line started, end it.
+          return;
+        }
       }
+      penState.penType = args.PEN_TYPE;
       this._startPenPath(target);
       this._updatePenSkinFor(target);
       target.addListener(RenderedTarget$1.EVENT_TARGET_MOVED, this.onTargetMoved);
@@ -33197,6 +33204,7 @@ var VPenBlocks = /*#__PURE__*/function () {
         this._updatePenSkinFor(target);
       }
       penState.penPath = null;
+      penState.referencePoint = null;
       target.removeListener(RenderedTarget$1.EVENT_TARGET_MOVED, this.onTargetMoved);
     }
 
@@ -33396,10 +33404,17 @@ var VPenBlocks = /*#__PURE__*/function () {
           opcode: 'penDown',
           blockType: BlockType$1.COMMAND,
           text: formatMessage({
-            id: 'pen.penDown',
-            default: 'pen down',
+            id: 'xcxVPen.penDown',
+            default: '[PEN_TYPE] pen down',
             description: 'start leaving a trail when the sprite moves'
           }),
+          arguments: {
+            PEN_TYPE: {
+              type: ArgumentType$1.STRING,
+              menu: 'penTypesMenu',
+              defaultValue: 'trail'
+            }
+          },
           filter: [TargetType$1.SPRITE]
         }, {
           opcode: 'penUp',
@@ -33408,6 +33423,15 @@ var VPenBlocks = /*#__PURE__*/function () {
             id: 'pen.penUp',
             default: 'pen up',
             description: 'stop leaving a trail behind the sprite'
+          }),
+          filter: [TargetType$1.SPRITE]
+        }, {
+          opcode: 'plot',
+          blockType: BlockType$1.COMMAND,
+          text: formatMessage({
+            id: 'xcxVPen.plot',
+            default: 'plot',
+            description: 'plot a node of the path'
           }),
           filter: [TargetType$1.SPRITE]
         }, {
@@ -33514,12 +33538,31 @@ var VPenBlocks = /*#__PURE__*/function () {
           }
         }],
         menus: {
-          colorParam: {
-            acceptReporters: true,
-            items: this._initColorParam()
+          penTypesMenu: {
+            acceptReporters: false,
+            items: 'getPenTypesMenuItems'
           }
         }
       };
+    }
+  }, {
+    key: "getPenTypesMenuItems",
+    value: function getPenTypesMenuItems() {
+      return [{
+        text: formatMessage({
+          id: 'xcxVPen.penTypesMenu.trail',
+          default: 'trail',
+          description: 'pen type'
+        }),
+        value: VPenBlocks.PEN_TYPES.TRAIL
+      }, {
+        text: formatMessage({
+          id: 'xcxVPen.penTypesMenu.plotter',
+          default: 'plotter',
+          description: 'plotter pen type'
+        }),
+        value: VPenBlocks.PEN_TYPES.PLOTTER
+      }];
     }
   }], [{
     key: "formatMessage",
@@ -33590,20 +33633,34 @@ var VPenBlocks = /*#__PURE__*/function () {
     }
 
     /**
+     * The types of pen.
+     */
+  }, {
+    key: "PEN_TYPES",
+    get: function get() {
+      return {
+        TRAIL: 'trail',
+        PLOTTER: 'plotter'
+      };
+    }
+
+    /**
      * The default state of the vector pen.
      * @type {object}
      * @property {int} skinID - the ID of the renderer Skin corresponding to the pen layer.
-     * @property {SVG.Path} penPath - the current pen line.
-     * @property {SVG.Container} drawing - the container for the pen lines.
+     * @property {Path} penPath - the current pen line.
+     * @property {Container} drawing - the container for the pen lines.
      * @property {object} penAttributes - the pen attributes.
      * @property {Array.<number>} penAttributes.color3b - the pen color[RGB 0-255].
      * @property {number} penAttributes.diameter - the pen diameter[mm].
+     * @property {object} referencePoint - the reference point for the plotter pen.
      */
   }, {
     key: "DEFAULT_PEN_STATE",
     get: function get() {
       return {
         skinID: -1,
+        penType: VPenBlocks.PEN_TYPES.TRAIL,
         penPath: null,
         drawing: null,
         penAttributes: {
@@ -33616,7 +33673,8 @@ var VPenBlocks = /*#__PURE__*/function () {
           opacity: 1,
           // 0-1
           diameter: 1 // mm
-        }
+        },
+        referencePoint: null
       };
     }
   }]);
