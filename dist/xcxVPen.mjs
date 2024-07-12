@@ -32973,31 +32973,36 @@ var VPenBlocks = /*#__PURE__*/function () {
       return [x + 240, 180 - y];
     }
   }, {
+    key: "_finishPenPath",
+    value: function _finishPenPath(path) {
+      if (path) {
+        if (path.array().length === 1) {
+          // If the pen line only has one instruction (MoveTo), it hasn't been drawn yet.
+          path.remove();
+        }
+      }
+    }
+  }, {
     key: "_startPenPath",
     value: function _startPenPath(target) {
       var penState = this._getPenState(target);
+      var penPath = penState.penPath;
       if (penState.penType === VPenBlocks.PEN_TYPES.PLOTTER) {
         if (penState.referencePoint) {
-          penState.penPath.array().pop();
+          penPath.array().pop();
           penState.referencePoint = null;
         }
       }
-      if (penState.penPath) {
-        if (penState.penPath.array().length === 1) {
-          // If the pen line only has one point, it should be a dot.
-          penState.penPath.array().push(['L'].concat(_toConsumableArray(penState.penPath.array()[0].slice(1))));
-          penState.penPath.plot(penState.penPath.array());
-        }
-      }
-      var penPath = penState.drawing.path(['M'].concat(_toConsumableArray(this._mapToSVGViewBox(target.x, target.y))));
-      penPath.fill('none').stroke({
+      this._finishPenPath(penPath);
+      var newPath = penState.drawing.path(['M'].concat(_toConsumableArray(this._mapToSVGViewBox(target.x, target.y))));
+      newPath.fill('none').stroke({
         width: penState.penAttributes.diameter * this.stepPerMM,
         color: penState.penAttributes.color3b,
         opacity: penState.penAttributes.opacity,
         linecap: 'round',
         linejoin: 'round'
       });
-      penState.penPath = penPath;
+      penState.penPath = newPath;
     }
   }, {
     key: "_addLineToPenPath",
@@ -33197,12 +33202,7 @@ var VPenBlocks = /*#__PURE__*/function () {
         // If there's no line started, there's nothing to end.
         return;
       }
-      var linePoints = penPath.array();
-      if (linePoints.length === 1) {
-        // If the pen line only has one point, it hasn't been drawn yet.
-        this._addLineToPenPath(penPath, target.x, target.y);
-        this._updatePenSkinFor(target);
-      }
+      this._finishPenPath(penPath);
       penState.penPath = null;
       penState.referencePoint = null;
       target.removeListener(RenderedTarget$1.EVENT_TARGET_MOVED, this.onTargetMoved);
