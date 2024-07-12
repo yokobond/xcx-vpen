@@ -11,11 +11,6 @@ import blockIcon from './block-icon.png';
 import {Fragment, SVG} from '@svgdotjs/svg.js';
 import FileSaver from 'file-saver';
 
-/**
- * The number of millimeters per pixel.
- * @type {number}
- */
-const MM_PER_PX = 25.4 / 96;
 
 /**
  * Formatter which is used for translation.
@@ -95,6 +90,10 @@ class VPenBlocks {
         extensionURL = url;
     }
 
+    /**
+     * The key to load & store a target's pen-related state.
+     * @type {string}
+     */
     static get STATE_KEY () {
         return 'XCX_VPEN_STATE';
     }
@@ -109,6 +108,9 @@ class VPenBlocks {
 
     /**
      * The types of pen.
+     * @type {object}
+     * @property {string} TRAIL - trail pen.
+     * @property {string} PLOTTER - plotter pen.
      */
     static get PEN_TYPES () {
         return {
@@ -137,7 +139,8 @@ class VPenBlocks {
             penAttributes: {
                 color3b: {r: 0, g: 0, b: 0}, // RGB 0-255,
                 opacity: 1, // 0-1
-                diameter: 1 // mm
+                diameter: 1, // mm
+                lineShape: VPenBlocks.LINE_SHAPES.STRAIGHT
             },
             referencePoint: null
         };
@@ -160,9 +163,13 @@ class VPenBlocks {
         }
 
         const [stageWidth, stageHeight] = this.runtime.renderer.getNativeSize();
-        this.stageWidth = stageWidth;
-        this.stageHeight = stageHeight;
-        this.stepPerMM = stageHeight / 180; // 180mm is the height of the stage
+        this._updateStageSize(stageWidth, stageHeight);
+
+        /**
+         * The step per mm.
+         * @type {number}
+         */
+        this.stepPerMM = 2; // 180mm for stage height
 
         this.onTargetCreated = this.onTargetCreated.bind(this);
         this.onTargetMoved = this.onTargetMoved.bind(this);
@@ -171,12 +178,24 @@ class VPenBlocks {
         runtime.on('RUNTIME_DISPOSED', this.clearAll.bind(this));
     }
 
-    _mmToPx (mm) {
-        return mm / MM_PER_PX;
-    }
+    /**
+     * Update the stage size.
+     * @param {number} stageWidth - the width of the stage.
+     * @param {number} stageHeight - the height of the stage.
+     */
+    _updateStageSize (stageWidth, stageHeight) {
+        /**
+         * The width of the stage.
+         * @type {number}
+         */
+        this.stageWidth = stageWidth;
 
-    _pxToMM (px) {
-        return px * MM_PER_PX;
+        /**
+         * The height of the stage.
+         * @type {number}
+         */
+        this.stageHeight = stageHeight;
+
     }
 
     /**
@@ -270,7 +289,7 @@ class VPenBlocks {
     }
 
     _mapToSVGViewBox (x, y) {
-        return [(x + 240), (180 - y)];
+        return [x + (this.stageWidth / 2), (this.stageHeight / 2) - y];
     }
 
     /**
@@ -286,6 +305,10 @@ class VPenBlocks {
         }
     }
 
+    /**
+     * Start a new pen path for the target.
+     * @param {Target} target - the target to start the pen path for.
+     */
     _startPenPath (target) {
         const penState = this._getPenState(target);
         const penPath = penState.penPath;
@@ -309,6 +332,12 @@ class VPenBlocks {
         penState.penPath = newPath;
     }
 
+    /**
+     * Add a line to the pen path for the target.
+     * @param {Path} path - the path to add the line to.
+     * @param {number} x - the x position of the line.
+     * @param {number} y - the y position of the line.
+     */
     _addLineToPenPath (path, x, y) {
         path.array()
             .push(['L', ...this._mapToSVGViewBox(x, y)]);
@@ -435,6 +464,11 @@ class VPenBlocks {
         this._updatePenSkinFor(target);
     }
 
+    /**
+     * Plot a node of the path.
+     * @param {object} args - the block arguments.
+     * @param {object} util - utility object provided by the runtime.
+     */
     plot (args, util) {
         const target = util.target;
         const penState = this._getPenState(target);
@@ -683,8 +717,7 @@ class VPenBlocks {
                     arguments: {
                         PEN_TYPE: {
                             type: ArgumentType.STRING,
-                            menu: 'penTypesMenu',
-                            defaultValue: 'trail'
+                            menu: 'penTypesMenu'
                         }
                     },
                     filter: [TargetType.SPRITE]
@@ -715,7 +748,7 @@ class VPenBlocks {
                     text: formatMessage({
                         id: 'pen.setColor',
                         default: 'set pen color to [COLOR]',
-                        description: 'set the pen color to a particular (RGB) value'
+                        description: 'set the pen color'
                     }),
                     arguments: {
                         COLOR: {
@@ -802,8 +835,7 @@ class VPenBlocks {
                             type: ArgumentType.NUMBER,
                             defaultValue: 2
                         }
-                    },
-                    fillter: [TargetType.SPRITE]
+                    }
                 },
                 {
                     opcode: 'downloadSVG',
