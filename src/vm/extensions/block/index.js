@@ -233,6 +233,12 @@ class VPenBlocks {
         return penState.skinID;
     }
 
+    /**
+     * Get the state of the pen for the target if it exists.
+     * If the state doesn't exist, return null.
+     * @param {Target} target - the target to query.
+     * @return {object?} - the pen state or null.
+     */
     _penStateFor (target) {
         return target.getCustomState(VPenBlocks.STATE_KEY);
     }
@@ -263,6 +269,10 @@ class VPenBlocks {
         return penState;
     }
 
+    /**
+     * Clear the pen layer for the target.
+     * @param {Target} target - the target to clear the pen layer for.
+     */
     _clearForTarget (target) {
         const penState = this._penStateFor(target);
         if (!penState || !penState.drawing) {
@@ -276,6 +286,10 @@ class VPenBlocks {
         this._updatePenSkinFor(target);
     }
 
+    /**
+     * Update the pen skin for the target.
+     * @param {Target} target - the target to update the pen skin for.
+     */
     _updatePenSkinFor (target) {
         const penSkinId = this._getPenLayerIDFor(target);
         if (penSkinId < 0) {
@@ -288,6 +302,12 @@ class VPenBlocks {
         this.runtime.requestRedraw();
     }
 
+    /**
+     * Map the x, y position to the SVG viewBox.
+     * @param {number} x - the x position on the stage.
+     * @param {number} y - the y position on the stage.
+     * @returns {Array.<number>} - the x, y position on the SVG viewBox.
+     */
     _mapToSVGViewBox (x, y) {
         return [x + (this.stageWidth / 2), (this.stageHeight / 2) - y];
     }
