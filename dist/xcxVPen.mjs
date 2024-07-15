@@ -32800,12 +32800,6 @@ var FileSaver_minExports = FileSaver_min.exports;
 var FileSaver = /*@__PURE__*/getDefaultExportFromCjs(FileSaver_minExports);
 
 /**
- * The number of millimeters per pixel.
- * @type {number}
- */
-var MM_PER_PX = 25.4 / 96;
-
-/**
  * Formatter which is used for translation.
  * This will be replaced which is used in the runtime.
  * @param {object} messageData - format-message object
@@ -32856,24 +32850,39 @@ var VPenBlocks = /*#__PURE__*/function () {
       _this$runtime$rendere2 = _slicedToArray(_this$runtime$rendere, 2),
       stageWidth = _this$runtime$rendere2[0],
       stageHeight = _this$runtime$rendere2[1];
-    this.stageWidth = stageWidth;
-    this.stageHeight = stageHeight;
-    this.stepPerMM = stageHeight / 180; // 180mm is the height of the stage
+    this._updateStageSize(stageWidth, stageHeight);
+
+    /**
+     * The step per mm.
+     * @type {number}
+     */
+    this.stepPerMM = 2; // 180mm for stage height
 
     this.onTargetCreated = this.onTargetCreated.bind(this);
     this.onTargetMoved = this.onTargetMoved.bind(this);
     runtime.on('targetWasCreated', this.onTargetCreated);
     runtime.on('RUNTIME_DISPOSED', this.clearAll.bind(this));
   }
+
+  /**
+   * Update the stage size.
+   * @param {number} stageWidth - the width of the stage.
+   * @param {number} stageHeight - the height of the stage.
+   */
   return _createClass$1(VPenBlocks, [{
-    key: "_mmToPx",
-    value: function _mmToPx(mm) {
-      return mm / MM_PER_PX;
-    }
-  }, {
-    key: "_pxToMM",
-    value: function _pxToMM(px) {
-      return px * MM_PER_PX;
+    key: "_updateStageSize",
+    value: function _updateStageSize(stageWidth, stageHeight) {
+      /**
+       * The width of the stage.
+       * @type {number}
+       */
+      this.stageWidth = stageWidth;
+
+      /**
+       * The height of the stage.
+       * @type {number}
+       */
+      this.stageHeight = stageHeight;
     }
 
     /**
@@ -32909,6 +32918,13 @@ var VPenBlocks = /*#__PURE__*/function () {
       }
       return penState.skinID;
     }
+
+    /**
+     * Get the state of the pen for the target if it exists.
+     * If the state doesn't exist, return null.
+     * @param {Target} target - the target to query.
+     * @return {object?} - the pen state or null.
+     */
   }, {
     key: "_penStateFor",
     value: function _penStateFor(target) {
@@ -32942,6 +32958,11 @@ var VPenBlocks = /*#__PURE__*/function () {
       }
       return penState;
     }
+
+    /**
+     * Clear the pen layer for the target.
+     * @param {Target} target - the target to clear the pen layer for.
+     */
   }, {
     key: "_clearForTarget",
     value: function _clearForTarget(target) {
@@ -32956,6 +32977,11 @@ var VPenBlocks = /*#__PURE__*/function () {
       }
       this._updatePenSkinFor(target);
     }
+
+    /**
+     * Update the pen skin for the target.
+     * @param {Target} target - the target to update the pen skin for.
+     */
   }, {
     key: "_updatePenSkinFor",
     value: function _updatePenSkinFor(target) {
@@ -32967,33 +32993,67 @@ var VPenBlocks = /*#__PURE__*/function () {
       this.runtime.renderer.updateSVGSkin(penSkinId, this.convertSVGForPenLayer(drawing.svg()));
       this.runtime.requestRedraw();
     }
+
+    /**
+     * Map the x, y position to the SVG viewBox.
+     * @param {number} x - the x position on the stage.
+     * @param {number} y - the y position on the stage.
+     * @returns {Array.<number>} - the x, y position on the SVG viewBox.
+     */
   }, {
     key: "_mapToSVGViewBox",
     value: function _mapToSVGViewBox(x, y) {
-      return [x + 240, 180 - y];
+      return [x + this.stageWidth / 2, this.stageHeight / 2 - y];
     }
+
+    /**
+     * Finish the current pen.
+     * @param {object} penState - the pen state.
+     */
   }, {
-    key: "_finishPenPath",
-    value: function _finishPenPath(path) {
-      if (path) {
-        if (path.array().length === 1) {
+    key: "_finishPen",
+    value: function _finishPen(penState) {
+      this._removeReferenceLine(penState);
+      if (penState.penPath) {
+        if (penState.penPath.array().length <= 1) {
           // If the pen line only has one instruction (MoveTo), it hasn't been drawn yet.
-          path.remove();
+          penState.penPath.remove();
         }
       }
+      penState.penPath = null;
     }
+
+    /**
+     * Remove the last reference point for the plotter pen.
+     * @param {object} penState - the pen state.
+     */
+  }, {
+    key: "_removeReferenceLine",
+    value: function _removeReferenceLine(penState) {
+      if (!penState.referencePoint) {
+        return;
+      }
+      var penPath = penState.penPath;
+      if (penState.penAttributes.lineShape === VPenBlocks.LINE_SHAPES.CURVE) {
+        penPath.array().pop(); // remove T
+        var referenceCurve = penPath.array().pop(); // Q
+        penPath.array().push(['T', referenceCurve[1], referenceCurve[2]]);
+      } else {
+        // The reference is a straight line.
+        penState.penPath.array().pop();
+      }
+      penState.referencePoint = null;
+    }
+
+    /**
+     * Start a new pen path for the target.
+     * @param {Target} target - the target to start the pen path for.
+     */
   }, {
     key: "_startPenPath",
     value: function _startPenPath(target) {
       var penState = this._getPenState(target);
-      var penPath = penState.penPath;
-      if (penState.penType === VPenBlocks.PEN_TYPES.PLOTTER) {
-        if (penState.referencePoint) {
-          penPath.array().pop();
-          penState.referencePoint = null;
-        }
-      }
-      this._finishPenPath(penPath);
+      this._finishPen(penState);
       var newPath = penState.drawing.path(['M'].concat(_toConsumableArray(this._mapToSVGViewBox(target.x, target.y))));
       newPath.fill('none').stroke({
         width: penState.penAttributes.diameter * this.stepPerMM,
@@ -33004,11 +33064,40 @@ var VPenBlocks = /*#__PURE__*/function () {
       });
       penState.penPath = newPath;
     }
+
+    /**
+     * Add a line to the pen path for the target.
+     * @param {Path} path - the path to add the line to.
+     * @param {number} x - the x position of the line.
+     * @param {number} y - the y position of the line.
+     */
   }, {
     key: "_addLineToPenPath",
     value: function _addLineToPenPath(path, x, y) {
       path.array().push(['L'].concat(_toConsumableArray(this._mapToSVGViewBox(x, y))));
       path.plot(path.array());
+    }
+
+    /**
+     * Add a line to the pen path for the target.
+     * @param {Path} path - the path to add the line to.
+     * @param {number} x - the x position of the line.
+     * @param {number} y - the y position of the line.
+     */
+  }, {
+    key: "_addCurveToPenPath",
+    value: function _addCurveToPenPath(path, x, y) {
+      var pathArray = path.array();
+      var prevNode = pathArray[pathArray.length - 1]; // T or M or L
+      if (prevNode[0] === 'T') {
+        pathArray.pop();
+      }
+      var prevPoint = [prevNode[1], prevNode[2]];
+      var endPoint = this._mapToSVGViewBox(x, y);
+      var controlPoint = [(prevPoint[0] + endPoint[0]) / 2, (prevPoint[1] + endPoint[1]) / 2];
+      pathArray.push(['Q'].concat(prevPoint, controlPoint));
+      pathArray.push(['T'].concat(_toConsumableArray(endPoint)));
+      path.plot(pathArray);
     }
 
     /**
@@ -33127,13 +33216,7 @@ var VPenBlocks = /*#__PURE__*/function () {
         // If the pen is up, there's nothing to draw.
         return;
       }
-      if (penState.penType === VPenBlocks.PEN_TYPES.PLOTTER) {
-        // Display the pen path for current position.
-        if (penState.referencePoint) {
-          penPath.array().pop();
-        }
-        penState.referencePoint = null;
-      }
+      this._removeReferenceLine(penState);
       if (isForce) {
         // Only move the pen if the movement isn't forced (ie. dragged).
         // This prevents the pen from drawing when the sprite is dragged.
@@ -33143,10 +33226,20 @@ var VPenBlocks = /*#__PURE__*/function () {
           x: target.x,
           y: target.y
         };
-        this._addLineToPenPath(penPath, target.x, target.y);
+        if (penState.penAttributes.lineShape === VPenBlocks.LINE_SHAPES.CURVE) {
+          this._addCurveToPenPath(penPath, target.x, target.y);
+        } else {
+          this._addLineToPenPath(penPath, target.x, target.y);
+        }
       }
       this._updatePenSkinFor(target);
     }
+
+    /**
+     * Plot a node of the path.
+     * @param {object} args - the block arguments.
+     * @param {object} util - utility object provided by the runtime.
+     */
   }, {
     key: "plot",
     value: function plot(args, util) {
@@ -33157,12 +33250,12 @@ var VPenBlocks = /*#__PURE__*/function () {
         // If there's no line started, there's nothing to end.
         return;
       }
-      if (penState.referencePoint) {
-        penPath.array().pop();
-        penState.referencePoint = null;
+      if (penState.penType === VPenBlocks.PEN_TYPES.TRAIL) {
+        // If the pen is down, there's nothing to plot.
+        return;
       }
-      this._addLineToPenPath(penPath, target.x, target.y);
-      this._updatePenSkinFor(target);
+      // Change the reference point to the drawing position.
+      penState.referencePoint = null;
     }
 
     /**
@@ -33202,9 +33295,7 @@ var VPenBlocks = /*#__PURE__*/function () {
         // If there's no line started, there's nothing to end.
         return;
       }
-      this._finishPenPath(penPath);
-      penState.penPath = null;
-      penState.referencePoint = null;
+      this._finishPen(penState);
       target.removeListener(RenderedTarget$1.EVENT_TARGET_MOVED, this.onTargetMoved);
     }
 
@@ -33271,6 +33362,25 @@ var VPenBlocks = /*#__PURE__*/function () {
         // If there's a pen line started, end it and start a new one.
         this._startPenPath(target);
       }
+    }
+
+    /**
+     * Set the line shape.
+     * @param {object} args - the block arguments.
+     * @param {string} args.LINE_SHAPE - the shape of the line.
+     * @param {object} util - utility object provided by the runtime.
+     */
+  }, {
+    key: "setLineShape",
+    value: function setLineShape(args, util) {
+      var target = util.target;
+      var penState = this._getPenState(target);
+      var newLineShape = args.LINE_SHAPE;
+      if (penState.penAttributes.lineShape === newLineShape) {
+        // No change.
+        return;
+      }
+      penState.penAttributes.lineShape = newLineShape;
     }
 
     /**
@@ -33411,8 +33521,7 @@ var VPenBlocks = /*#__PURE__*/function () {
           arguments: {
             PEN_TYPE: {
               type: ArgumentType$1.STRING,
-              menu: 'penTypesMenu',
-              defaultValue: 'trail'
+              menu: 'penTypesMenu'
             }
           },
           filter: [TargetType$1.SPRITE]
@@ -33440,7 +33549,7 @@ var VPenBlocks = /*#__PURE__*/function () {
           text: formatMessage({
             id: 'pen.setColor',
             default: 'set pen color to [COLOR]',
-            description: 'set the pen color to a particular (RGB) value'
+            description: 'set the pen color'
           }),
           arguments: {
             COLOR: {
@@ -33460,6 +33569,21 @@ var VPenBlocks = /*#__PURE__*/function () {
             SIZE: {
               type: ArgumentType$1.NUMBER,
               defaultValue: 1
+            }
+          },
+          filter: [TargetType$1.SPRITE]
+        }, {
+          opcode: 'setLineShape',
+          blockType: BlockType$1.COMMAND,
+          text: formatMessage({
+            id: 'xcxVPen.setLineShape',
+            default: 'set line shape to [LINE_SHAPE]',
+            description: 'set the shape of a line'
+          }),
+          arguments: {
+            LINE_SHAPE: {
+              type: ArgumentType$1.STRING,
+              menu: 'lineShapesMenu'
             }
           },
           filter: [TargetType$1.SPRITE]
@@ -33520,8 +33644,7 @@ var VPenBlocks = /*#__PURE__*/function () {
               type: ArgumentType$1.NUMBER,
               defaultValue: 2
             }
-          },
-          fillter: [TargetType$1.SPRITE]
+          }
         }, {
           opcode: 'downloadSVG',
           blockType: BlockType$1.COMMAND,
@@ -33541,6 +33664,10 @@ var VPenBlocks = /*#__PURE__*/function () {
           penTypesMenu: {
             acceptReporters: false,
             items: 'getPenTypesMenuItems'
+          },
+          lineShapesMenu: {
+            acceptReporters: false,
+            items: 'getLineShapesMenuItems'
           }
         }
       };
@@ -33562,6 +33689,25 @@ var VPenBlocks = /*#__PURE__*/function () {
           description: 'plotter pen type'
         }),
         value: VPenBlocks.PEN_TYPES.PLOTTER
+      }];
+    }
+  }, {
+    key: "getLineShapesMenuItems",
+    value: function getLineShapesMenuItems() {
+      return [{
+        text: formatMessage({
+          id: 'xcxVPen.lineShapesMenu.straight',
+          default: 'straight',
+          description: 'line shape'
+        }),
+        value: VPenBlocks.LINE_SHAPES.STRAIGHT
+      }, {
+        text: formatMessage({
+          id: 'xcxVPen.lineShapesMenu.curve',
+          default: 'curve',
+          description: 'curve line shape'
+        }),
+        value: VPenBlocks.LINE_SHAPES.CURVE
       }];
     }
   }], [{
@@ -33616,6 +33762,11 @@ var VPenBlocks = /*#__PURE__*/function () {
     set: function set(url) {
       extensionURL = url;
     }
+
+    /**
+     * The key to load & store a target's pen-related state.
+     * @type {string}
+     */
   }, {
     key: "STATE_KEY",
     get: function get() {
@@ -33634,6 +33785,9 @@ var VPenBlocks = /*#__PURE__*/function () {
 
     /**
      * The types of pen.
+     * @type {object}
+     * @property {string} TRAIL - trail pen.
+     * @property {string} PLOTTER - plotter pen.
      */
   }, {
     key: "PEN_TYPES",
@@ -33641,6 +33795,21 @@ var VPenBlocks = /*#__PURE__*/function () {
       return {
         TRAIL: 'trail',
         PLOTTER: 'plotter'
+      };
+    }
+
+    /**
+     * The types of line shapes.
+     * @type {object}
+     * @property {string} STRAIGHT - straight line.
+     * @property {string} CURVE - curve line.
+     */
+  }, {
+    key: "LINE_SHAPES",
+    get: function get() {
+      return {
+        STRAIGHT: 'straight',
+        CURVE: 'curve'
       };
     }
 
@@ -33672,7 +33841,9 @@ var VPenBlocks = /*#__PURE__*/function () {
           // RGB 0-255,
           opacity: 1,
           // 0-1
-          diameter: 1 // mm
+          diameter: 1,
+          // mm
+          lineShape: VPenBlocks.LINE_SHAPES.STRAIGHT
         },
         referencePoint: null
       };

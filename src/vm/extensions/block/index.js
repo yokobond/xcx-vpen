@@ -120,6 +120,19 @@ class VPenBlocks {
     }
 
     /**
+     * The types of line shapes.
+     * @type {object}
+     * @property {string} STRAIGHT - straight line.
+     * @property {string} CURVE - curve line.
+     */
+    static get LINE_SHAPES () {
+        return {
+            STRAIGHT: 'straight',
+            CURVE: 'curve'
+        };
+    }
+
+    /**
      * The default state of the vector pen.
      * @type {object}
      * @property {int} skinID - the ID of the renderer Skin corresponding to the pen layer.
@@ -313,16 +326,38 @@ class VPenBlocks {
     }
 
     /**
-     * Finish the current pen path.
-     * @param {Path} path - the path to finish.
+     * Finish the current pen.
+     * @param {object} penState - the pen state.
      */
-    _finishPenPath (path) {
-        if (path) {
-            if (path.array().length === 1) {
+    _finishPen (penState) {
+        this._removeReferenceLine(penState);
+        if (penState.penPath) {
+            if (penState.penPath.array().length <= 1) {
                 // If the pen line only has one instruction (MoveTo), it hasn't been drawn yet.
-                path.remove();
+                penState.penPath.remove();
             }
         }
+        penState.penPath = null;
+    }
+
+    /**
+     * Remove the last reference point for the plotter pen.
+     * @param {object} penState - the pen state.
+     */
+    _removeReferenceLine (penState) {
+        if (!penState.referencePoint) {
+            return;
+        }
+        const penPath = penState.penPath;
+        if (penState.penAttributes.lineShape === VPenBlocks.LINE_SHAPES.CURVE) {
+            penPath.array().pop(); // remove T
+            const referenceCurve = penPath.array().pop(); // Q
+            penPath.array().push(['T', referenceCurve[1], referenceCurve[2]]);
+        } else {
+            // The reference is a straight line.
+            penState.penPath.array().pop();
+        }
+        penState.referencePoint = null;
     }
 
     /**
@@ -331,14 +366,7 @@ class VPenBlocks {
      */
     _startPenPath (target) {
         const penState = this._getPenState(target);
-        const penPath = penState.penPath;
-        if (penState.penType === VPenBlocks.PEN_TYPES.PLOTTER) {
-            if (penState.referencePoint) {
-                penPath.array().pop();
-                penState.referencePoint = null;
-            }
-        }
-        this._finishPenPath(penPath);
+        this._finishPen(penState);
         const newPath = penState.drawing.path(['M', ...this._mapToSVGViewBox(target.x, target.y)]);
         newPath
             .fill('none')
@@ -362,6 +390,29 @@ class VPenBlocks {
         path.array()
             .push(['L', ...this._mapToSVGViewBox(x, y)]);
         path.plot(path.array());
+    }
+
+    /**
+     * Add a line to the pen path for the target.
+     * @param {Path} path - the path to add the line to.
+     * @param {number} x - the x position of the line.
+     * @param {number} y - the y position of the line.
+     */
+    _addCurveToPenPath (path, x, y) {
+        const pathArray = path.array();
+        const prevNode = pathArray[pathArray.length - 1]; // T or M or L
+        if (prevNode[0] === 'T') {
+            pathArray.pop();
+        }
+        const prevPoint = [prevNode[1], prevNode[2]];
+        const endPoint = this._mapToSVGViewBox(x, y);
+        const controlPoint = [
+            (prevPoint[0] + endPoint[0]) / 2,
+            (prevPoint[1] + endPoint[1]) / 2
+        ];
+        pathArray.push(['Q', ...prevPoint, ...controlPoint]);
+        pathArray.push(['T', ...endPoint]);
+        path.plot(pathArray);
     }
 
     /**
@@ -466,20 +517,18 @@ class VPenBlocks {
             // If the pen is up, there's nothing to draw.
             return;
         }
-        if (penState.penType === VPenBlocks.PEN_TYPES.PLOTTER) {
-            // Display the pen path for current position.
-            if (penState.referencePoint) {
-                penPath.array().pop();
-            }
-            penState.referencePoint = null;
-        }
+        this._removeReferenceLine(penState);
         if (isForce) {
             // Only move the pen if the movement isn't forced (ie. dragged).
             // This prevents the pen from drawing when the sprite is dragged.
             this._startPenPath(target);
         } else {
             penState.referencePoint = {x: target.x, y: target.y};
-            this._addLineToPenPath(penPath, target.x, target.y);
+            if (penState.penAttributes.lineShape === VPenBlocks.LINE_SHAPES.CURVE) {
+                this._addCurveToPenPath(penPath, target.x, target.y);
+            } else {
+                this._addLineToPenPath(penPath, target.x, target.y);
+            }
         }
         this._updatePenSkinFor(target);
     }
@@ -497,12 +546,12 @@ class VPenBlocks {
             // If there's no line started, there's nothing to end.
             return;
         }
-        if (penState.referencePoint) {
-            penPath.array().pop();
-            penState.referencePoint = null;
+        if (penState.penType === VPenBlocks.PEN_TYPES.TRAIL) {
+            // If the pen is down, there's nothing to plot.
+            return;
         }
-        this._addLineToPenPath(penPath, target.x, target.y);
-        this._updatePenSkinFor(target);
+        // Change the reference point to the drawing position.
+        penState.referencePoint = null;
     }
 
     /**
@@ -538,9 +587,7 @@ class VPenBlocks {
             // If there's no line started, there's nothing to end.
             return;
         }
-        this._finishPenPath(penPath);
-        penState.penPath = null;
-        penState.referencePoint = null;
+        this._finishPen(penState);
         target.removeListener(RenderedTarget.EVENT_TARGET_MOVED, this.onTargetMoved);
     }
 
@@ -604,6 +651,23 @@ class VPenBlocks {
             // If there's a pen line started, end it and start a new one.
             this._startPenPath(target);
         }
+    }
+
+    /**
+     * Set the line shape.
+     * @param {object} args - the block arguments.
+     * @param {string} args.LINE_SHAPE - the shape of the line.
+     * @param {object} util - utility object provided by the runtime.
+     */
+    setLineShape (args, util) {
+        const target = util.target;
+        const penState = this._getPenState(target);
+        const newLineShape = args.LINE_SHAPE;
+        if (penState.penAttributes.lineShape === newLineShape) {
+            // No change.
+            return;
+        }
+        penState.penAttributes.lineShape = newLineShape;
     }
 
     /**
@@ -793,6 +857,22 @@ class VPenBlocks {
                     },
                     filter: [TargetType.SPRITE]
                 },
+                {
+                    opcode: 'setLineShape',
+                    blockType: BlockType.COMMAND,
+                    text: formatMessage({
+                        id: 'xcxVPen.setLineShape',
+                        default: 'set line shape to [LINE_SHAPE]',
+                        description: 'set the shape of a line'
+                    }),
+                    arguments: {
+                        LINE_SHAPE: {
+                            type: ArgumentType.STRING,
+                            menu: 'lineShapesMenu'
+                        }
+                    },
+                    filter: [TargetType.SPRITE]
+                },
                 '---',
                 {
                     opcode: 'clearAll',
@@ -877,6 +957,10 @@ class VPenBlocks {
                 penTypesMenu: {
                     acceptReporters: false,
                     items: 'getPenTypesMenuItems'
+                },
+                lineShapesMenu: {
+                    acceptReporters: false,
+                    items: 'getLineShapesMenuItems'
                 }
             }
         };
@@ -899,6 +983,27 @@ class VPenBlocks {
                     description: 'plotter pen type'
                 }),
                 value: VPenBlocks.PEN_TYPES.PLOTTER
+            }
+        ];
+    }
+
+    getLineShapesMenuItems () {
+        return [
+            {
+                text: formatMessage({
+                    id: 'xcxVPen.lineShapesMenu.straight',
+                    default: 'straight',
+                    description: 'line shape'
+                }),
+                value: VPenBlocks.LINE_SHAPES.STRAIGHT
+            },
+            {
+                text: formatMessage({
+                    id: 'xcxVPen.lineShapesMenu.curve',
+                    default: 'curve',
+                    description: 'curve line shape'
+                }),
+                value: VPenBlocks.LINE_SHAPES.CURVE
             }
         ];
     }
