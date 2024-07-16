@@ -33341,6 +33341,30 @@ var VPenBlocks = /*#__PURE__*/function () {
     }
 
     /**
+     * Set the pen opacity.
+     * @param {object} args - the block arguments.
+     * @param {number} args.OPACITY - the opacity of the pen.
+     * @param {object} util - utility object provided by the runtime.
+     */
+  }, {
+    key: "setPenOpacity",
+    value: function setPenOpacity(args, util) {
+      var target = util.target;
+      var penState = this._getPenState(target);
+      var newOpacity = Math.max(0, Math.min(1, Cast$2.toNumber(args.OPACITY) / 100));
+      if (penState.penAttributes.opacity === newOpacity) {
+        // No change.
+        return;
+      }
+      penState.penAttributes.opacity = newOpacity;
+      var penPath = penState.penPath;
+      if (penPath) {
+        // If there's a pen line started, end it and start a new one.
+        this._startPenPath(target);
+      }
+    }
+
+    /**
      * Set the pen size (mm).
      * @param {object} args - the block arguments.
      * @param {number} args.SIZE - the size of the pen in mm.
@@ -33554,6 +33578,21 @@ var VPenBlocks = /*#__PURE__*/function () {
           arguments: {
             COLOR: {
               type: ArgumentType$1.COLOR
+            }
+          },
+          filter: [TargetType$1.SPRITE]
+        }, {
+          opcode: 'setPenOpacity',
+          blockType: BlockType$1.COMMAND,
+          text: formatMessage({
+            id: 'xcxVPen.setPenOpacity',
+            default: 'set pen opacity to [OPACITY]',
+            description: 'set the vpen opacity'
+          }),
+          arguments: {
+            OPACITY: {
+              type: ArgumentType$1.NUMBER,
+              defaultValue: 100
             }
           },
           filter: [TargetType$1.SPRITE]
@@ -33840,7 +33879,7 @@ var VPenBlocks = /*#__PURE__*/function () {
           },
           // RGB 0-255,
           opacity: 1,
-          // 0-1
+          // 0.0-1.0
           diameter: 1,
           // mm
           lineShape: VPenBlocks.LINE_SHAPES.STRAIGHT

@@ -151,7 +151,7 @@ class VPenBlocks {
             drawing: null,
             penAttributes: {
                 color3b: {r: 0, g: 0, b: 0}, // RGB 0-255,
-                opacity: 1, // 0-1
+                opacity: 1, // 0.0-1.0
                 diameter: 1, // mm
                 lineShape: VPenBlocks.LINE_SHAPES.STRAIGHT
             },
@@ -632,6 +632,28 @@ class VPenBlocks {
     }
 
     /**
+     * Set the pen opacity.
+     * @param {object} args - the block arguments.
+     * @param {number} args.OPACITY - the opacity of the pen.
+     * @param {object} util - utility object provided by the runtime.
+     */
+    setPenOpacity (args, util) {
+        const target = util.target;
+        const penState = this._getPenState(target);
+        const newOpacity = Math.max(0, Math.min(1, Cast.toNumber(args.OPACITY) / 100));
+        if (penState.penAttributes.opacity === newOpacity) {
+            // No change.
+            return;
+        }
+        penState.penAttributes.opacity = newOpacity;
+        const penPath = penState.penPath;
+        if (penPath) {
+            // If there's a pen line started, end it and start a new one.
+            this._startPenPath(target);
+        }
+    }
+
+    /**
      * Set the pen size (mm).
      * @param {object} args - the block arguments.
      * @param {number} args.SIZE - the size of the pen in mm.
@@ -837,6 +859,22 @@ class VPenBlocks {
                     arguments: {
                         COLOR: {
                             type: ArgumentType.COLOR
+                        }
+                    },
+                    filter: [TargetType.SPRITE]
+                },
+                {
+                    opcode: 'setPenOpacity',
+                    blockType: BlockType.COMMAND,
+                    text: formatMessage({
+                        id: 'xcxVPen.setPenOpacity',
+                        default: 'set pen opacity to [OPACITY]',
+                        description: 'set the vpen opacity'
+                    }),
+                    arguments: {
+                        OPACITY: {
+                            type: ArgumentType.NUMBER,
+                            defaultValue: 100
                         }
                     },
                     filter: [TargetType.SPRITE]
