@@ -357,6 +357,7 @@ class VPenBlocks {
             // The reference is a straight line.
             penState.penPath.array().pop();
         }
+        penPath.plot(penPath.array());
         penState.referencePoint = null;
     }
 

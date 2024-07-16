@@ -33042,6 +33042,7 @@ var VPenBlocks = /*#__PURE__*/function () {
         // The reference is a straight line.
         penState.penPath.array().pop();
       }
+      penPath.plot(penPath.array());
       penState.referencePoint = null;
     }
 
