@@ -730,21 +730,49 @@ class VPenBlocks {
     }
 
     /**
-     * Get the SVG for the pen layer of the target.
-     * @param {Target} target - the target to query.
-     * @returns {Container} - cloned SVG container for the pen layer.
+     * Save the drawing as an SVG file.
+     * @param {SVG} svg - the SVG drawing.
+     * @param {string} fileName - the name of the file to save.
+     * @returns {Promise} - a promise that resolves after the file has been saved.
      */
-    _getSVGFor (target) {
-        const penState = this._penStateFor(target);
-        if (!penState || !penState.drawing) {
-            return '';
-        }
-        return penState.drawing.children().clone();
+    _saveSVGAsFile (svg, fileName) {
+        const saveData = svg
+            .size(
+                `${this.stageWidth / this.stepPerMM}mm`,
+                `${this.stageHeight / this.stepPerMM}mm`
+            )
+            .svg();
+        const blob = new Blob([saveData], {type: 'application/octet-stream'});
+        return FileSaver.saveAs(blob, `${fileName}.svg`);
     }
 
+    /**
+     * Add the sprite drawing group to the SVG if the sprite has a drawing.
+     * @param {Target} target - the target to add the sprite drawing for.
+     * @param {Container} svgContainer - the SVG container to add the sprite drawing to.
+     * @returns {Container?} - a new group for the sprite drawing or null.
+     */
+    _addSpriteDrawingTo (target, svgContainer) {
+        const penState = this._penStateFor(target);
+        if (!penState || !penState.drawing) {
+            return null;
+        }
+        const spriteGroup = svgContainer.group();
+        spriteGroup.id(target.sprite.name);
+        penState.drawing.children().forEach(child => {
+            spriteGroup.add(child.clone());
+        });
+        return spriteGroup;
+    }
+
+    /**
+     * Save the sprite drawing as an SVG file.
+     * @param {object} args - the block arguments.
+     * @param {object} util - utility object provided by the runtime.
+     * @returns {string} - the result of saving the sprite drawing.
+     */
     downloadSpriteDrawing (args, util) {
         const target = util.target;
-        const saveDrawing = this._createDrawingSVG();
         const penState = this._penStateFor(target);
         if (!penState || !penState.drawing) {
             return 'no drawing';
@@ -761,19 +789,10 @@ class VPenBlocks {
         if (fileName === null || fileName === '') {
             return 'cancelled';
         }
-        const layer = saveDrawing.group();
-        layer.id(target.sprite.name);
-        penState.drawing.children().forEach(child => {
-            layer.add(child.clone());
-        });
-        const saveData = saveDrawing
-            .size(
-                `${this.stageWidth / this.stepPerMM}mm`,
-                `${this.stageHeight / this.stepPerMM}mm`
-            )
-            .svg();
-        const blob = new Blob([saveData], {type: 'application/octet-stream'});
-        return FileSaver.saveAs(blob, `${fileName}.svg`);
+        const saveSVG = this._createDrawingSVG();
+        this._addSpriteDrawingTo(target, saveSVG);
+        this._saveSVGAsFile(saveSVG, fileName);
+        return 'saved';
     }
 
     /**
@@ -781,7 +800,7 @@ class VPenBlocks {
      * @param {object} args - the block arguments.
      * @param {string} args.NAME - the name of the file to save.
      * @param {object} util - utility object provided by the runtime.
-     * @returns {Promise} - a promise that resolves after the file has been saved.
+     * @returns {string} - the result of saving the SVG drawing.
      */
     downloadAllDrawing (args, util) {
         // eslint-disable-next-line no-alert
@@ -796,29 +815,13 @@ class VPenBlocks {
         if (fileName === null || fileName === '') {
             return 'cancelled';
         }
-        const saveDrawing = this._createDrawingSVG();
+        const saveSVG = this._createDrawingSVG();
         util.runtime.targets.filter(target => target.isSprite())
             .forEach(target => {
-                const penState = this._penStateFor(target);
-                if (!penState || !penState.drawing) {
-                    return '';
-                }
-                const targetDrawing = new Fragment();
-                const layer = targetDrawing.group();
-                layer.id(target.sprite.name);
-                penState.drawing.children().forEach(child => {
-                    layer.add(child.clone());
-                });
-                saveDrawing.add(targetDrawing);
+                this._addSpriteDrawingTo(target, saveSVG);
             });
-        const saveData = saveDrawing
-            .size(
-                `${this.stageWidth / this.stepPerMM}mm`,
-                `${this.stageHeight / this.stepPerMM}mm`
-            )
-            .svg();
-        const blob = new Blob([saveData], {type: 'application/octet-stream'});
-        return FileSaver.saveAs(blob, `${fileName}.svg`);
+        this._saveSVGAsFile(saveSVG, fileName);
+        return 'saved';
     }
 
     /**

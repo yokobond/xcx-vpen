@@ -33450,24 +33450,52 @@ var VPenBlocks = /*#__PURE__*/function () {
     }
 
     /**
-     * Get the SVG for the pen layer of the target.
-     * @param {Target} target - the target to query.
-     * @returns {Container} - cloned SVG container for the pen layer.
+     * Save the drawing as an SVG file.
+     * @param {SVG} svg - the SVG drawing.
+     * @param {string} fileName - the name of the file to save.
+     * @returns {Promise} - a promise that resolves after the file has been saved.
      */
   }, {
-    key: "_getSVGFor",
-    value: function _getSVGFor(target) {
+    key: "_saveSVGAsFile",
+    value: function _saveSVGAsFile(svg, fileName) {
+      var saveData = svg.size("".concat(this.stageWidth / this.stepPerMM, "mm"), "".concat(this.stageHeight / this.stepPerMM, "mm")).svg();
+      var blob = new Blob([saveData], {
+        type: 'application/octet-stream'
+      });
+      return FileSaver.saveAs(blob, "".concat(fileName, ".svg"));
+    }
+
+    /**
+     * Add the sprite drawing group to the SVG if the sprite has a drawing.
+     * @param {Target} target - the target to add the sprite drawing for.
+     * @param {Container} svgContainer - the SVG container to add the sprite drawing to.
+     * @returns {Container?} - a new group for the sprite drawing or null.
+     */
+  }, {
+    key: "_addSpriteDrawingTo",
+    value: function _addSpriteDrawingTo(target, svgContainer) {
       var penState = this._penStateFor(target);
       if (!penState || !penState.drawing) {
-        return '';
+        return null;
       }
-      return penState.drawing.children().clone();
+      var spriteGroup = svgContainer.group();
+      spriteGroup.id(target.sprite.name);
+      penState.drawing.children().forEach(function (child) {
+        spriteGroup.add(child.clone());
+      });
+      return spriteGroup;
     }
+
+    /**
+     * Save the sprite drawing as an SVG file.
+     * @param {object} args - the block arguments.
+     * @param {object} util - utility object provided by the runtime.
+     * @returns {string} - the result of saving the sprite drawing.
+     */
   }, {
     key: "downloadSpriteDrawing",
     value: function downloadSpriteDrawing(args, util) {
       var target = util.target;
-      var saveDrawing = this._createDrawingSVG();
       var penState = this._penStateFor(target);
       if (!penState || !penState.drawing) {
         return 'no drawing';
@@ -33481,16 +33509,10 @@ var VPenBlocks = /*#__PURE__*/function () {
       if (fileName === null || fileName === '') {
         return 'cancelled';
       }
-      var layer = saveDrawing.group();
-      layer.id(target.sprite.name);
-      penState.drawing.children().forEach(function (child) {
-        layer.add(child.clone());
-      });
-      var saveData = saveDrawing.size("".concat(this.stageWidth / this.stepPerMM, "mm"), "".concat(this.stageHeight / this.stepPerMM, "mm")).svg();
-      var blob = new Blob([saveData], {
-        type: 'application/octet-stream'
-      });
-      return FileSaver.saveAs(blob, "".concat(fileName, ".svg"));
+      var saveSVG = this._createDrawingSVG();
+      this._addSpriteDrawingTo(target, saveSVG);
+      this._saveSVGAsFile(saveSVG, fileName);
+      return 'saved';
     }
 
     /**
@@ -33498,7 +33520,7 @@ var VPenBlocks = /*#__PURE__*/function () {
      * @param {object} args - the block arguments.
      * @param {string} args.NAME - the name of the file to save.
      * @param {object} util - utility object provided by the runtime.
-     * @returns {Promise} - a promise that resolves after the file has been saved.
+     * @returns {string} - the result of saving the SVG drawing.
      */
   }, {
     key: "downloadAllDrawing",
@@ -33513,27 +33535,14 @@ var VPenBlocks = /*#__PURE__*/function () {
       if (fileName === null || fileName === '') {
         return 'cancelled';
       }
-      var saveDrawing = this._createDrawingSVG();
+      var saveSVG = this._createDrawingSVG();
       util.runtime.targets.filter(function (target) {
         return target.isSprite();
       }).forEach(function (target) {
-        var penState = _this2._penStateFor(target);
-        if (!penState || !penState.drawing) {
-          return '';
-        }
-        var targetDrawing = new Fragment();
-        var layer = targetDrawing.group();
-        layer.id(target.sprite.name);
-        penState.drawing.children().forEach(function (child) {
-          layer.add(child.clone());
-        });
-        saveDrawing.add(targetDrawing);
+        _this2._addSpriteDrawingTo(target, saveSVG);
       });
-      var saveData = saveDrawing.size("".concat(this.stageWidth / this.stepPerMM, "mm"), "".concat(this.stageHeight / this.stepPerMM, "mm")).svg();
-      var blob = new Blob([saveData], {
-        type: 'application/octet-stream'
-      });
-      return FileSaver.saveAs(blob, "".concat(fileName, ".svg"));
+      this._saveSVGAsFile(saveSVG, fileName);
+      return 'saved';
     }
 
     /**
