@@ -589,6 +589,7 @@ class VPenBlocks {
             return;
         }
         this._finishPen(penState);
+        this._updatePenSkinFor(target);
         target.removeListener(RenderedTarget.EVENT_TARGET_MOVED, this.onTargetMoved);
     }
 
