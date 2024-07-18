@@ -33297,6 +33297,7 @@ var VPenBlocks = /*#__PURE__*/function () {
         return;
       }
       this._finishPen(penState);
+      this._updatePenSkinFor(target);
       target.removeListener(RenderedTarget$1.EVENT_TARGET_MOVED, this.onTargetMoved);
     }
 
@@ -33443,9 +33444,6 @@ var VPenBlocks = /*#__PURE__*/function () {
     key: "clearAll",
     value: function clearAll() {
       var _this = this;
-      if (!this.downloadSVG) {
-        return;
-      }
       this.runtime.targets.forEach(function (target) {
         _this._clearForTarget(target);
       });
@@ -33465,6 +33463,35 @@ var VPenBlocks = /*#__PURE__*/function () {
       }
       return penState.drawing.children().clone();
     }
+  }, {
+    key: "downloadSpriteDrawing",
+    value: function downloadSpriteDrawing(args, util) {
+      var target = util.target;
+      var saveDrawing = this._createDrawingSVG();
+      var penState = this._penStateFor(target);
+      if (!penState || !penState.drawing) {
+        return 'no drawing';
+      }
+      // eslint-disable-next-line no-alert
+      var fileName = prompt(formatMessage({
+        id: 'xcxVPen.fileNameForSprite',
+        default: 'Enter a name for the file:',
+        description: 'prompt for the file name to save the sprite drawing'
+      }), target.sprite.name);
+      if (fileName === null || fileName === '') {
+        return 'cancelled';
+      }
+      var layer = saveDrawing.group();
+      layer.id(target.sprite.name);
+      penState.drawing.children().forEach(function (child) {
+        layer.add(child.clone());
+      });
+      var saveData = saveDrawing.size("".concat(this.stageWidth / this.stepPerMM, "mm"), "".concat(this.stageHeight / this.stepPerMM, "mm")).svg();
+      var blob = new Blob([saveData], {
+        type: 'application/octet-stream'
+      });
+      return FileSaver.saveAs(blob, "".concat(fileName, ".svg"));
+    }
 
     /**
      * Save the SVG drawing.
@@ -33474,12 +33501,17 @@ var VPenBlocks = /*#__PURE__*/function () {
      * @returns {Promise} - a promise that resolves after the file has been saved.
      */
   }, {
-    key: "downloadSVG",
-    value: function downloadSVG(args, util) {
+    key: "downloadAllDrawing",
+    value: function downloadAllDrawing(args, util) {
       var _this2 = this;
-      var name = Cast$2.toString(args.NAME);
-      if (name === '') {
-        name = util.target.sprite.name;
+      // eslint-disable-next-line no-alert
+      var fileName = prompt(formatMessage({
+        id: 'xcxVPen.fileNameForAll',
+        default: 'Enter a name for the file:',
+        description: 'prompt for the file name to save the all drawing'
+      }), 'vpen');
+      if (fileName === null || fileName === '') {
+        return 'cancelled';
       }
       var saveDrawing = this._createDrawingSVG();
       util.runtime.targets.filter(function (target) {
@@ -33501,7 +33533,7 @@ var VPenBlocks = /*#__PURE__*/function () {
       var blob = new Blob([saveData], {
         type: 'application/octet-stream'
       });
-      return FileSaver.saveAs(blob, "".concat(name, ".svg"));
+      return FileSaver.saveAs(blob, "".concat(fileName, ".svg"));
     }
 
     /**
@@ -33686,19 +33718,24 @@ var VPenBlocks = /*#__PURE__*/function () {
             }
           }
         }, {
-          opcode: 'downloadSVG',
+          opcode: 'downloadSpriteDrawing',
           blockType: BlockType$1.COMMAND,
           text: formatMessage({
-            id: 'xcxVPen.downloadSVG',
-            default: 'download SVG named [NAME]',
-            description: 'download the SVG drawing'
+            id: 'xcxVPen.downloadSpriteDrawing',
+            default: 'download drawing by the sprite',
+            description: 'download SVG of the sprite'
           }),
-          arguments: {
-            NAME: {
-              type: ArgumentType$1.STRING,
-              defaultValue: 'drawing'
-            }
-          }
+          arguments: {},
+          filter: [TargetType$1.SPRITE]
+        }, {
+          opcode: 'downloadAllDrawing',
+          blockType: BlockType$1.COMMAND,
+          text: formatMessage({
+            id: 'xcxVPen.downloadAllDrawing',
+            default: 'download all drawings',
+            description: 'download the SVG of all sprites'
+          }),
+          arguments: {}
         }],
         menus: {
           penTypesMenu: {

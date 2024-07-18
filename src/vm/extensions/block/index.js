@@ -742,6 +742,40 @@ class VPenBlocks {
         return penState.drawing.children().clone();
     }
 
+    downloadSpriteDrawing (args, util) {
+        const target = util.target;
+        const saveDrawing = this._createDrawingSVG();
+        const penState = this._penStateFor(target);
+        if (!penState || !penState.drawing) {
+            return 'no drawing';
+        }
+        // eslint-disable-next-line no-alert
+        const fileName = prompt(
+            formatMessage({
+                id: 'xcxVPen.fileNameForSprite',
+                default: 'Enter a name for the file:',
+                description: 'prompt for the file name to save the sprite drawing'
+            }),
+            target.sprite.name
+        );
+        if (fileName === null || fileName === '') {
+            return 'cancelled';
+        }
+        const layer = saveDrawing.group();
+        layer.id(target.sprite.name);
+        penState.drawing.children().forEach(child => {
+            layer.add(child.clone());
+        });
+        const saveData = saveDrawing
+            .size(
+                `${this.stageWidth / this.stepPerMM}mm`,
+                `${this.stageHeight / this.stepPerMM}mm`
+            )
+            .svg();
+        const blob = new Blob([saveData], {type: 'application/octet-stream'});
+        return FileSaver.saveAs(blob, `${fileName}.svg`);
+    }
+
     /**
      * Save the SVG drawing.
      * @param {object} args - the block arguments.
@@ -749,10 +783,18 @@ class VPenBlocks {
      * @param {object} util - utility object provided by the runtime.
      * @returns {Promise} - a promise that resolves after the file has been saved.
      */
-    downloadSVG (args, util) {
-        let name = Cast.toString(args.NAME);
-        if (name === '') {
-            name = util.target.sprite.name;
+    downloadAllDrawing (args, util) {
+        // eslint-disable-next-line no-alert
+        const fileName = prompt(
+            formatMessage({
+                id: 'xcxVPen.fileNameForAll',
+                default: 'Enter a name for the file:',
+                description: 'prompt for the file name to save the all drawing'
+            }),
+            'vpen'
+        );
+        if (fileName === null || fileName === '') {
+            return 'cancelled';
         }
         const saveDrawing = this._createDrawingSVG();
         util.runtime.targets.filter(target => target.isSprite())
@@ -776,7 +818,7 @@ class VPenBlocks {
             )
             .svg();
         const blob = new Blob([saveData], {type: 'application/octet-stream'});
-        return FileSaver.saveAs(blob, `${name}.svg`);
+        return FileSaver.saveAs(blob, `${fileName}.svg`);
     }
 
     /**
@@ -975,18 +1017,26 @@ class VPenBlocks {
                     }
                 },
                 {
-                    opcode: 'downloadSVG',
+                    opcode: 'downloadSpriteDrawing',
                     blockType: BlockType.COMMAND,
                     text: formatMessage({
-                        id: 'xcxVPen.downloadSVG',
-                        default: 'download SVG named [NAME]',
-                        description: 'download the SVG drawing'
+                        id: 'xcxVPen.downloadSpriteDrawing',
+                        default: 'download drawing by the sprite',
+                        description: 'download SVG of the sprite'
                     }),
                     arguments: {
-                        NAME: {
-                            type: ArgumentType.STRING,
-                            defaultValue: 'drawing'
-                        }
+                    },
+                    filter: [TargetType.SPRITE]
+                },
+                {
+                    opcode: 'downloadAllDrawing',
+                    blockType: BlockType.COMMAND,
+                    text: formatMessage({
+                        id: 'xcxVPen.downloadAllDrawing',
+                        default: 'download all drawings',
+                        description: 'download the SVG of all sprites'
+                    }),
+                    arguments: {
                     }
                 }
             ],
