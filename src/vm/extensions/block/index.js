@@ -583,8 +583,7 @@ class VPenBlocks {
     penUp (args, util) {
         const target = util.target;
         const penState = this._penStateFor(target);
-        const penPath = penState.penPath;
-        if (!penPath) {
+        if (!penState || !penState.penPath) {
             // If there's no line started, there's nothing to end.
             return;
         }
