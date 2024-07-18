@@ -612,10 +612,11 @@ class VPenBlocks {
         const target = util.target;
         const penState = this._getPenState(target);
         const rgba = Cast.toRgbColorObject(args.COLOR);
+        const opacity = 1 - ((rgba.a ? rgba.a : 0) / 255);
         if (penState.penAttributes.color3b.r === rgba.r &&
             penState.penAttributes.color3b.g === rgba.g &&
             penState.penAttributes.color3b.b === rgba.b &&
-            penState.penAttributes.opacity === rgba.a / 255) {
+            penState.penAttributes.opacity === opacity) {
             // No change.
             return;
         }
@@ -624,7 +625,7 @@ class VPenBlocks {
             g: rgba.g,
             b: rgba.b
         };
-        penState.penAttributes.opacity = rgba.a / 255;
+        penState.penAttributes.opacity = opacity;
         const penPath = penState.penPath;
         if (penPath) {
             // If there's a pen line started, end it and start a new one.

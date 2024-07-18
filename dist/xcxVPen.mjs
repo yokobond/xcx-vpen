@@ -33291,8 +33291,7 @@ var VPenBlocks = /*#__PURE__*/function () {
     value: function penUp(args, util) {
       var target = util.target;
       var penState = this._penStateFor(target);
-      var penPath = penState.penPath;
-      if (!penPath) {
+      if (!penState || !penState.penPath) {
         // If there's no line started, there's nothing to end.
         return;
       }
@@ -33325,7 +33324,8 @@ var VPenBlocks = /*#__PURE__*/function () {
       var target = util.target;
       var penState = this._getPenState(target);
       var rgba = Cast$2.toRgbColorObject(args.COLOR);
-      if (penState.penAttributes.color3b.r === rgba.r && penState.penAttributes.color3b.g === rgba.g && penState.penAttributes.color3b.b === rgba.b && penState.penAttributes.opacity === rgba.a / 255) {
+      var opacity = 1 - (rgba.a ? rgba.a : 0) / 255;
+      if (penState.penAttributes.color3b.r === rgba.r && penState.penAttributes.color3b.g === rgba.g && penState.penAttributes.color3b.b === rgba.b && penState.penAttributes.opacity === opacity) {
         // No change.
         return;
       }
@@ -33334,7 +33334,7 @@ var VPenBlocks = /*#__PURE__*/function () {
         g: rgba.g,
         b: rgba.b
       };
-      penState.penAttributes.opacity = rgba.a / 255;
+      penState.penAttributes.opacity = opacity;
       var penPath = penState.penPath;
       if (penPath) {
         // If there's a pen line started, end it and start a new one.
