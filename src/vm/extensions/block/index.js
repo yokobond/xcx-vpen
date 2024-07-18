@@ -724,9 +724,6 @@ class VPenBlocks {
      * Clears the pen layer's contents.
      */
     clearAll () {
-        if (!this.downloadSVG) {
-            return;
-        }
         this.runtime.targets.forEach(target => {
             this._clearForTarget(target);
         });
