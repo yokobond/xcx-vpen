@@ -8,7 +8,7 @@ import Clone from '../../util/clone';
 
 import translations from './translations.json';
 import blockIcon from './block-icon.png';
-import {Fragment, SVG} from '@svgdotjs/svg.js';
+import {SVG} from '@svgdotjs/svg.js';
 import FileSaver from 'file-saver';
 
 
@@ -233,7 +233,7 @@ class VPenBlocks {
      * @returns {int} the Skin ID of the pen layer, or -1 on failure.
      * @private
      */
-    _getPenLayerIDFor (target) {
+    _getSkinIDFor (target) {
         const penState = this._getPenState(target);
         const renderer = this.runtime.renderer;
         if (penState.skinID < 0 && renderer) {
@@ -304,7 +304,7 @@ class VPenBlocks {
      * @param {Target} target - the target to update the pen skin for.
      */
     _updatePenSkinFor (target) {
-        const penSkinId = this._getPenLayerIDFor(target);
+        const penSkinId = this._getSkinIDFor(target);
         if (penSkinId < 0) {
             throw new Error('No SVG Skin ID');
         }
