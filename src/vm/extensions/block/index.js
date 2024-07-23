@@ -91,14 +91,6 @@ class VPenBlocks {
     }
 
     /**
-     * The key to load & store a target's pen-related state.
-     * @type {string}
-     */
-    static get STATE_KEY () {
-        return 'XCX_VPEN_STATE';
-    }
-
-    /**
      * The minimum stroke width for display purposes.
      * @type {number}
      */
@@ -136,6 +128,7 @@ class VPenBlocks {
      * The default state of the vector pen.
      * @type {object}
      * @property {int} skinID - the ID of the renderer Skin corresponding to the pen layer.
+     * @property {int} drawableID - the ID of the renderer Drawable corresponding to the pen layer.
      * @property {Path} penPath - the current pen line.
      * @property {Container} drawing - the container for the pen lines.
      * @property {object} penAttributes - the pen attributes.
@@ -146,6 +139,7 @@ class VPenBlocks {
     static get DEFAULT_PEN_STATE () {
         return {
             skinID: -1,
+            drawableID: -1,
             penType: VPenBlocks.PEN_TYPES.TRAIL,
             penPath: null,
             drawing: null,
@@ -175,6 +169,12 @@ class VPenBlocks {
             formatMessage = runtime.formatMessage;
         }
 
+        /**
+         * The pen states for each target.
+         * @type {object.<string, object>}
+         */
+        this._penStates = {};
+
         const [stageWidth, stageHeight] = this.runtime.renderer.getNativeSize();
         this._updateStageSize(stageWidth, stageHeight);
 
@@ -184,11 +184,13 @@ class VPenBlocks {
          */
         this.stepPerMM = 2; // 180mm for stage height
 
-        this.onTargetCreated = this.onTargetCreated.bind(this);
+        // Bind event handlers.
         this.onTargetMoved = this.onTargetMoved.bind(this);
 
-        runtime.on('targetWasCreated', this.onTargetCreated);
-        runtime.on('RUNTIME_DISPOSED', this.clearAll.bind(this));
+        // Register block to the runtime.
+        runtime.on('targetWasCreated', this.onTargetCreated.bind(this));
+        runtime.on('targetWasRemoved', this.onTargetWillExit.bind(this));
+        runtime.on('RUNTIME_DISPOSED', this.onRuntimeDisposed.bind(this));
     }
 
     /**
@@ -253,7 +255,8 @@ class VPenBlocks {
      * @return {object?} - the pen state or null.
      */
     _penStateFor (target) {
-        return target.getCustomState(VPenBlocks.STATE_KEY);
+        const targetID = target.id;
+        return this._penStates[targetID];
     }
 
     /**
@@ -271,10 +274,10 @@ class VPenBlocks {
      * @private
      */
     _getPenState (target) {
-        let penState = target.getCustomState(VPenBlocks.STATE_KEY);
+        let penState = this._penStateFor(target);
         if (!penState) {
             penState = Clone.simple(VPenBlocks.DEFAULT_PEN_STATE);
-            target.setCustomState(VPenBlocks.STATE_KEY, penState);
+            this._penStates[target.id] = penState;
         }
         if (!penState.drawing) {
             penState.drawing = this._createDrawingSVG();
@@ -479,6 +482,42 @@ class VPenBlocks {
      */
     setStepPerMM (args) {
         this.stepPerMM = Cast.toNumber(args.STEP_PER_MM);
+    }
+
+    /**
+     * Clear pen layer for the target.
+     * @param {Target} targetID - the target to clear the pen layer for.
+     */
+    destroyPenLayerForID (targetID) {
+        const penState = this._penStates[targetID];
+        if (penState) {
+            const target = this.runtime.getTargetById(targetID);
+            if (target && target.isOriginal) {
+                this.runtime.renderer.destroyDrawable(penState.drawableID, StageLayering.PEN_LAYER);
+                this.runtime.renderer.destroySkin(penState.skinID);
+            }
+            delete this._penStates[targetID];
+            this.runtime.requestRedraw();
+        }
+    }
+
+    /**
+     * Handle a target which is exiting.
+     * @param {RenderedTarget} target - the target.
+     * @private
+     */
+    onTargetWillExit (target) {
+        const penState = this._penStateFor(target);
+        if (penState) {
+            this.penUp({}, {target});
+            this.destroyPenLayerForID(target.id);
+        }
+    }
+
+    onRuntimeDisposed () {
+        Object.keys(this._penStates).forEach(targetID => {
+            this.destroyPenLayerForID(targetID);
+        });
     }
 
     /**
