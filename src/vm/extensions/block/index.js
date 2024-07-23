@@ -518,7 +518,9 @@ class VPenBlocks {
             // If the pen is up, there's nothing to draw.
             return;
         }
-        this._removeReferenceLine(penState);
+        if (penState.penType === VPenBlocks.PEN_TYPES.PLOTTER) {
+            this._removeReferenceLine(penState);
+        }
         if (isForce) {
             // Only move the pen if the movement isn't forced (ie. dragged).
             // This prevents the pen from drawing when the sprite is dragged.
