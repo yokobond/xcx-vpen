@@ -565,14 +565,17 @@ class VPenBlocks {
     penDown (args, util) {
         const target = util.target;
         const penState = this._getPenState(target);
-        if (penState.penType === args.PEN_TYPE) {
-            if (penState.penPath) {
+        if (penState.penPath) {
+            if (penState.penType === args.PEN_TYPE) {
                 // If there's already a line started, end it.
                 return;
             }
+            this._finishPen(penState);
         }
         penState.penType = args.PEN_TYPE;
-        this._startPenPath(target);
+        if (penState.penType === VPenBlocks.PEN_TYPES.TRAIL) {
+            this._startPenPath(target);
+        }
         this._updatePenSkinFor(target);
         target.addListener(RenderedTarget.EVENT_TARGET_MOVED, this.onTargetMoved);
     }
