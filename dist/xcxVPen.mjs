@@ -32846,6 +32846,12 @@ var VPenBlocks = /*#__PURE__*/function () {
       // Replace 'formatMessage' to a formatter which is used in the runtime.
       formatMessage = runtime.formatMessage;
     }
+
+    /**
+     * The pen states for each target.
+     * @type {object.<string, object>}
+     */
+    this._penStates = {};
     var _this$runtime$rendere = this.runtime.renderer.getNativeSize(),
       _this$runtime$rendere2 = _slicedToArray(_this$runtime$rendere, 2),
       stageWidth = _this$runtime$rendere2[0],
@@ -32858,10 +32864,13 @@ var VPenBlocks = /*#__PURE__*/function () {
      */
     this.stepPerMM = 2; // 180mm for stage height
 
-    this.onTargetCreated = this.onTargetCreated.bind(this);
+    // Bind event handlers.
     this.onTargetMoved = this.onTargetMoved.bind(this);
-    runtime.on('targetWasCreated', this.onTargetCreated);
-    runtime.on('RUNTIME_DISPOSED', this.clearAll.bind(this));
+
+    // Register block to the runtime.
+    runtime.on('targetWasCreated', this.onTargetCreated.bind(this));
+    runtime.on('targetWasRemoved', this.onTargetWillExit.bind(this));
+    runtime.on('RUNTIME_DISPOSED', this.onRuntimeDisposed.bind(this));
   }
 
   /**
@@ -32906,8 +32915,8 @@ var VPenBlocks = /*#__PURE__*/function () {
      * @private
      */
   }, {
-    key: "_getPenLayerIDFor",
-    value: function _getPenLayerIDFor(target) {
+    key: "_getSkinIDFor",
+    value: function _getSkinIDFor(target) {
       var penState = this._getPenState(target);
       var renderer = this.runtime.renderer;
       if (penState.skinID < 0 && renderer) {
@@ -32928,7 +32937,8 @@ var VPenBlocks = /*#__PURE__*/function () {
   }, {
     key: "_penStateFor",
     value: function _penStateFor(target) {
-      return target.getCustomState(VPenBlocks.STATE_KEY);
+      var targetID = target.id;
+      return this._penStates[targetID];
     }
 
     /**
@@ -32948,10 +32958,10 @@ var VPenBlocks = /*#__PURE__*/function () {
   }, {
     key: "_getPenState",
     value: function _getPenState(target) {
-      var penState = target.getCustomState(VPenBlocks.STATE_KEY);
+      var penState = this._penStateFor(target);
       if (!penState) {
         penState = Clone$2.simple(VPenBlocks.DEFAULT_PEN_STATE);
-        target.setCustomState(VPenBlocks.STATE_KEY, penState);
+        this._penStates[target.id] = penState;
       }
       if (!penState.drawing) {
         penState.drawing = this._createDrawingSVG();
@@ -32985,12 +32995,13 @@ var VPenBlocks = /*#__PURE__*/function () {
   }, {
     key: "_updatePenSkinFor",
     value: function _updatePenSkinFor(target) {
-      var penSkinId = this._getPenLayerIDFor(target);
+      var penSkinId = this._getSkinIDFor(target);
       if (penSkinId < 0) {
         throw new Error('No SVG Skin ID');
       }
-      var drawing = this._penStateFor(target).drawing;
-      this.runtime.renderer.updateSVGSkin(penSkinId, this.convertSVGForPenLayer(drawing.svg()));
+      var penState = this._penStateFor(target);
+      var svg = penState.drawing.root();
+      this.runtime.renderer.updateSVGSkin(penSkinId, this.convertSVGForPenLayer(svg.svg()));
       this.runtime.requestRedraw();
     }
 
@@ -33177,6 +33188,50 @@ var VPenBlocks = /*#__PURE__*/function () {
     }
 
     /**
+     * Clear pen layer for the target.
+     * @param {Target} targetID - the target to clear the pen layer for.
+     */
+  }, {
+    key: "destroyPenLayerForID",
+    value: function destroyPenLayerForID(targetID) {
+      var penState = this._penStates[targetID];
+      if (penState) {
+        var target = this.runtime.getTargetById(targetID);
+        if (target && target.isOriginal) {
+          this.runtime.renderer.destroyDrawable(penState.drawableID, StageLayering$2.PEN_LAYER);
+          this.runtime.renderer.destroySkin(penState.skinID);
+        }
+        delete this._penStates[targetID];
+        this.runtime.requestRedraw();
+      }
+    }
+
+    /**
+     * Handle a target which is exiting.
+     * @param {RenderedTarget} target - the target.
+     * @private
+     */
+  }, {
+    key: "onTargetWillExit",
+    value: function onTargetWillExit(target) {
+      var penState = this._penStateFor(target);
+      if (penState) {
+        this.penUp({}, {
+          target: target
+        });
+        this.destroyPenLayerForID(target.id);
+      }
+    }
+  }, {
+    key: "onRuntimeDisposed",
+    value: function onRuntimeDisposed() {
+      var _this = this;
+      Object.keys(this._penStates).forEach(function (targetID) {
+        _this.destroyPenLayerForID(targetID);
+      });
+    }
+
+    /**
      * When a pen-using Target is cloned, clone the pen state.
      * @param {Target} newTarget - the newly created target.
      * @param {Target} [sourceTarget] - the target used as a source for the new clone, if any.
@@ -33187,15 +33242,15 @@ var VPenBlocks = /*#__PURE__*/function () {
     key: "onTargetCreated",
     value: function onTargetCreated(newTarget, sourceTarget) {
       if (sourceTarget) {
-        var penState = sourceTarget.getCustomState(VPenBlocks.STATE_KEY);
-        if (penState) {
-          // @TODO: Design a way to clone the skin.
-          newTarget.setCustomState(VPenBlocks.STATE_KEY, Clone$2.simple(penState));
-          if (penState.penPath) {
-            if (penState.penType === VPenBlocks.PEN_TYPES.TRAIL) {
-              newTarget.addListener(RenderedTarget$1.EVENT_TARGET_MOVED, this.onTargetMoved);
-            }
-          }
+        var sourcePenState = this._penStateFor(sourceTarget);
+        if (sourcePenState) {
+          var newPenState = VPenBlocks.DEFAULT_PEN_STATE;
+          newPenState.skinID = sourcePenState.skinID;
+          newPenState.drawableID = sourcePenState.drawableID;
+          newPenState.penType = sourcePenState.penType;
+          newPenState.penAttributes = Clone$2.simple(sourcePenState.penAttributes);
+          this._penStates[newTarget.id] = newPenState;
+          newPenState.drawing = sourcePenState.drawing.group();
         }
       }
     }
@@ -33217,7 +33272,9 @@ var VPenBlocks = /*#__PURE__*/function () {
         // If the pen is up, there's nothing to draw.
         return;
       }
-      this._removeReferenceLine(penState);
+      if (penState.penType === VPenBlocks.PEN_TYPES.PLOTTER) {
+        this._removeReferenceLine(penState);
+      }
       if (isForce) {
         // Only move the pen if the movement isn't forced (ie. dragged).
         // This prevents the pen from drawing when the sprite is dragged.
@@ -33246,14 +33303,17 @@ var VPenBlocks = /*#__PURE__*/function () {
     value: function plot(args, util) {
       var target = util.target;
       var penState = this._getPenState(target);
-      var penPath = penState.penPath;
-      if (!penPath) {
-        // If there's no line started, there's nothing to end.
-        return;
-      }
-      if (penState.penType === VPenBlocks.PEN_TYPES.TRAIL) {
-        // If the pen is down, there's nothing to plot.
-        return;
+      if (penState.penPath) {
+        if (penState.penType === VPenBlocks.PEN_TYPES.TRAIL) {
+          // Trail pen was down, so nothing to plot.
+          return;
+        }
+      } else {
+        // If there's no line started, start plotter.
+        penState.penType = VPenBlocks.PEN_TYPES.PLOTTER;
+        this._startPenPath(target);
+        this._updatePenSkinFor(target);
+        target.addListener(RenderedTarget$1.EVENT_TARGET_MOVED, this.onTargetMoved);
       }
       // Change the reference point to the drawing position.
       penState.referencePoint = null;
@@ -33269,14 +33329,17 @@ var VPenBlocks = /*#__PURE__*/function () {
     value: function penDown(args, util) {
       var target = util.target;
       var penState = this._getPenState(target);
-      if (penState.penType === args.PEN_TYPE) {
-        if (penState.penPath) {
+      if (penState.penPath) {
+        if (penState.penType === args.PEN_TYPE) {
           // If there's already a line started, end it.
           return;
         }
+        this._finishPen(penState);
       }
       penState.penType = args.PEN_TYPE;
-      this._startPenPath(target);
+      if (penState.penType === VPenBlocks.PEN_TYPES.TRAIL) {
+        this._startPenPath(target);
+      }
       this._updatePenSkinFor(target);
       target.addListener(RenderedTarget$1.EVENT_TARGET_MOVED, this.onTargetMoved);
     }
@@ -33443,9 +33506,9 @@ var VPenBlocks = /*#__PURE__*/function () {
   }, {
     key: "clearAll",
     value: function clearAll() {
-      var _this = this;
+      var _this2 = this;
       this.runtime.targets.forEach(function (target) {
-        _this._clearForTarget(target);
+        _this2._clearForTarget(target);
       });
     }
 
@@ -33525,7 +33588,7 @@ var VPenBlocks = /*#__PURE__*/function () {
   }, {
     key: "downloadAllDrawing",
     value: function downloadAllDrawing(args, util) {
-      var _this2 = this;
+      var _this3 = this;
       // eslint-disable-next-line no-alert
       var fileName = prompt(formatMessage({
         id: 'xcxVPen.fileNameForAll',
@@ -33539,7 +33602,7 @@ var VPenBlocks = /*#__PURE__*/function () {
       util.runtime.targets.filter(function (target) {
         return target.isSprite();
       }).forEach(function (target) {
-        _this2._addSpriteDrawingTo(target, saveSVG);
+        _this3._addSpriteDrawingTo(target, saveSVG);
       });
       this._saveSVGAsFile(saveSVG, fileName);
       return 'saved';
@@ -33850,16 +33913,6 @@ var VPenBlocks = /*#__PURE__*/function () {
     }
 
     /**
-     * The key to load & store a target's pen-related state.
-     * @type {string}
-     */
-  }, {
-    key: "STATE_KEY",
-    get: function get() {
-      return 'XCX_VPEN_STATE';
-    }
-
-    /**
      * The minimum stroke width for display purposes.
      * @type {number}
      */
@@ -33903,6 +33956,7 @@ var VPenBlocks = /*#__PURE__*/function () {
      * The default state of the vector pen.
      * @type {object}
      * @property {int} skinID - the ID of the renderer Skin corresponding to the pen layer.
+     * @property {int} drawableID - the ID of the renderer Drawable corresponding to the pen layer.
      * @property {Path} penPath - the current pen line.
      * @property {Container} drawing - the container for the pen lines.
      * @property {object} penAttributes - the pen attributes.
@@ -33915,6 +33969,7 @@ var VPenBlocks = /*#__PURE__*/function () {
     get: function get() {
       return {
         skinID: -1,
+        drawableID: -1,
         penType: VPenBlocks.PEN_TYPES.TRAIL,
         penPath: null,
         drawing: null,

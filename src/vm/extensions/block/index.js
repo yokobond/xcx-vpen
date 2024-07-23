@@ -311,10 +311,11 @@ class VPenBlocks {
         if (penSkinId < 0) {
             throw new Error('No SVG Skin ID');
         }
-        const drawing = this._penStateFor(target).drawing;
+        const penState = this._penStateFor(target);
+        const svg = penState.drawing.root();
         this.runtime.renderer.updateSVGSkin(
             penSkinId,
-            this.convertSVGForPenLayer(drawing.svg()));
+            this.convertSVGForPenLayer(svg.svg()));
         this.runtime.requestRedraw();
     }
 
@@ -529,15 +530,15 @@ class VPenBlocks {
      */
     onTargetCreated (newTarget, sourceTarget) {
         if (sourceTarget) {
-            const penState = sourceTarget.getCustomState(VPenBlocks.STATE_KEY);
-            if (penState) {
-                // @TODO: Design a way to clone the skin.
-                newTarget.setCustomState(VPenBlocks.STATE_KEY, Clone.simple(penState));
-                if (penState.penPath) {
-                    if (penState.penType === VPenBlocks.PEN_TYPES.TRAIL) {
-                        newTarget.addListener(RenderedTarget.EVENT_TARGET_MOVED, this.onTargetMoved);
-                    }
-                }
+            const sourcePenState = this._penStateFor(sourceTarget);
+            if (sourcePenState) {
+                const newPenState = VPenBlocks.DEFAULT_PEN_STATE;
+                newPenState.skinID = sourcePenState.skinID;
+                newPenState.drawableID = sourcePenState.drawableID;
+                newPenState.penType = sourcePenState.penType;
+                newPenState.penAttributes = Clone.simple(sourcePenState.penAttributes);
+                this._penStates[newTarget.id] = newPenState;
+                newPenState.drawing = sourcePenState.drawing.group();
             }
         }
     }
