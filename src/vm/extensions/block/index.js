@@ -544,14 +544,17 @@ class VPenBlocks {
     plot (args, util) {
         const target = util.target;
         const penState = this._getPenState(target);
-        const penPath = penState.penPath;
-        if (!penPath) {
-            // If there's no line started, there's nothing to end.
-            return;
-        }
-        if (penState.penType === VPenBlocks.PEN_TYPES.TRAIL) {
-            // If the pen is down, there's nothing to plot.
-            return;
+        if (penState.penPath) {
+            if (penState.penType === VPenBlocks.PEN_TYPES.TRAIL) {
+                // Trail pen was down, so nothing to plot.
+                return;
+            }
+        } else {
+            // If there's no line started, start plotter.
+            penState.penType = VPenBlocks.PEN_TYPES.PLOTTER;
+            this._startPenPath(target);
+            this._updatePenSkinFor(target);
+            target.addListener(RenderedTarget.EVENT_TARGET_MOVED, this.onTargetMoved);
         }
         // Change the reference point to the drawing position.
         penState.referencePoint = null;
