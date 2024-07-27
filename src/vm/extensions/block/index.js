@@ -132,8 +132,11 @@ class VPenBlocks {
      * @property {Path} penPath - the current pen line.
      * @property {Container} drawing - the container for the pen lines.
      * @property {object} penAttributes - the pen attributes.
-     * @property {Array.<number>} penAttributes.color3b - the pen color[RGB 0-255].
+     * @property {object} penAttributes.color3b - the pen color[RGB 0-255].
      * @property {number} penAttributes.diameter - the pen diameter[mm].
+     * @property {string} penAttributes.lineShape - the shape of the line.
+     * @property {object} penAttributes.fillColor3b - the fill color[RGB 0-255].
+     * @property {number} penAttributes.fillOpacity - the fill opacity.
      * @property {object} referencePoint - the reference point for the plotter pen.
      */
     static get DEFAULT_PEN_STATE () {
@@ -147,7 +150,9 @@ class VPenBlocks {
                 color3b: {r: 0, g: 0, b: 0}, // RGB 0-255,
                 opacity: 1, // 0.0-1.0
                 diameter: 1, // mm
-                lineShape: VPenBlocks.LINE_SHAPES.STRAIGHT
+                lineShape: VPenBlocks.LINE_SHAPES.STRAIGHT,
+                fillColor3b: {r: 0, g: 0, b: 0}, // RGB 0-255,
+                fillOpacity: 0 // 0.0-1.0
             },
             referencePoint: null
         };
@@ -268,8 +273,11 @@ class VPenBlocks {
      * @property {Path} penPath - the current pen line.
      * @property {Container} drawing - the container for the pen lines.
      * @property {object} penAttributes - the pen attributes.
-     * @property {Array.<number>} penAttributes.color3b - the pen color[RGB 0-255].
+     * @property {object} penAttributes.color3b - the pen color[RGB 0-255].
      * @property {number} penAttributes.diameter - the pen diameter[mm].
+     * @property {string} penAttributes.lineShape - the shape of the line.
+     * @property {object} penAttributes.fillColor3b - the fill color[RGB 0-255].
+     * @property {number} penAttributes.fillOpacity - the fill opacity.
      * @property {object} referencePoint - the reference point for the plotter pen.
      * @private
      */
@@ -334,14 +342,38 @@ class VPenBlocks {
      * @param {object} penState - the pen state.
      */
     _finishPen (penState) {
-        this._removeReferenceLine(penState);
-        if (penState.penPath) {
-            if (penState.penPath.array().length <= 1) {
-                // If the pen line only has one instruction (MoveTo), it hasn't been drawn yet.
-                penState.penPath.remove();
-            }
+        if (!penState.penPath) {
+            return;
         }
+        this._removeReferenceLine(penState);
+        const penPath = penState.penPath;
         penState.penPath = null;
+        const plots = penPath.array();
+        if (plots.length === 1) {
+            // If the pen line only has one instruction (MoveTo), it hasn't been drawn yet.
+            penPath.remove();
+            return;
+        }
+        if (plots.length === 2) {
+            return;
+        }
+        // Close the path if it's a closed line.
+        const start = (plots[1][0] === 'L') ? plots[0] : plots[1];
+        const lastLine = plots[plots.length - 1]; // L or T
+        const tolerance = 0.5;
+        if (((start[1] - lastLine[1]) ** 2) + ((start[2] - lastLine[2]) ** 2) >
+            tolerance ** 2) {
+            return;
+        }
+        // It's a closed line.
+        const firstLine = plots[1]; // L or Q
+        if (firstLine[0] === 'Q' && lastLine[0] === 'T') {
+            plots.pop(); // remove T
+            plots.push([...plots[1]]); // copy the first Q to the end
+            plots[0] = ['M', ...plots[1].slice(3)]; // move the start to the control point of the first Q
+            plots.splice(1, 1); // remove the first Q
+        }
+        penPath.plot(plots.concat(['Z']));
     }
 
     /**
@@ -374,7 +406,10 @@ class VPenBlocks {
         this._finishPen(penState);
         const newPath = penState.drawing.path(['M', ...this._mapToSVGViewBox(target.x, target.y)]);
         newPath
-            .fill('none')
+            .fill(penState.penAttributes.fillOpacity > 0 ? {
+                color: penState.penAttributes.fillColor3b,
+                opacity: penState.penAttributes.fillOpacity
+            } : 'none')
             .stroke({
                 width: penState.penAttributes.diameter * this.stepPerMM,
                 color: penState.penAttributes.color3b,
@@ -743,6 +778,65 @@ class VPenBlocks {
     }
 
     /**
+     * Set fill color of the pen by color tool.
+     * @param {object} args - the block arguments.
+     * @param {string|number} args.COLOR - the color to set.
+     * @param {object} util - utility object provided by the runtime.
+     */
+    setFillColorToColor (args, util) {
+        const target = util.target;
+        const penState = this._getPenState(target);
+        const rgba = Cast.toRgbColorObject(args.COLOR);
+        const opacity = 1 - ((rgba.a ? rgba.a : 0) / 255);
+        if (penState.penAttributes.fillColor3b.r === rgba.r &&
+            penState.penAttributes.fillColor3b.g === rgba.g &&
+            penState.penAttributes.fillColor3b.b === rgba.b &&
+            penState.penAttributes.fillOpacity === opacity) {
+            // No change.
+            return;
+        }
+        penState.penAttributes.fillColor3b = {
+            r: rgba.r,
+            g: rgba.g,
+            b: rgba.b
+        };
+        penState.penAttributes.fillOpacity = opacity;
+        const penPath = penState.penPath;
+        if (penPath) {
+            penPath.fill(penState.penAttributes.fillOpacity > 0 ? {
+                color: penState.penAttributes.fillColor3b,
+                opacity: penState.penAttributes.fillOpacity
+            } : 'none');
+            this._updatePenSkinFor(target);
+        }
+    }
+
+    /**
+     * Set fill opacity of the pen.
+     * @param {object} args - the block arguments.
+     * @param {number} args.OPACITY - the opacity of the fill color.
+     * @param {object} util - utility object provided by the runtime.
+     */
+    setFillOpacity (args, util) {
+        const target = util.target;
+        const penState = this._getPenState(target);
+        const newOpacity = Math.max(0, Math.min(1, Cast.toNumber(args.OPACITY) / 100));
+        if (penState.penAttributes.fillOpacity === newOpacity) {
+            // No change.
+            return;
+        }
+        penState.penAttributes.fillOpacity = newOpacity;
+        const penPath = penState.penPath;
+        if (penPath) {
+            penPath.fill(penState.penAttributes.fillOpacity > 0 ? {
+                color: penState.penAttributes.fillColor3b,
+                opacity: penState.penAttributes.fillOpacity
+            } : 'none');
+            this._updatePenSkinFor(target);
+        }
+    }
+
+    /**
      * The pen "stamp" block stamps the current drawable's image onto the pen layer.
      * @param {object} args - the block arguments.
      * @param {object} util - utility object provided by the runtime.
@@ -999,6 +1093,37 @@ class VPenBlocks {
                         LINE_SHAPE: {
                             type: ArgumentType.STRING,
                             menu: 'lineShapesMenu'
+                        }
+                    },
+                    filter: [TargetType.SPRITE]
+                },
+                {
+                    opcode: 'setFillColorToColor',
+                    blockType: BlockType.COMMAND,
+                    text: formatMessage({
+                        id: 'xcxVPen.setFillColorToColor',
+                        default: 'set fill color to [COLOR]',
+                        description: 'set fill color of the pen'
+                    }),
+                    arguments: {
+                        COLOR: {
+                            type: ArgumentType.COLOR
+                        }
+                    },
+                    filter: [TargetType.SPRITE]
+                },
+                {
+                    opcode: 'setFillOpacity',
+                    blockType: BlockType.COMMAND,
+                    text: formatMessage({
+                        id: 'xcxVPen.setFillOpacity',
+                        default: 'set fill opacity to [OPACITY]',
+                        description: 'set fill opacity of the pen'
+                    }),
+                    arguments: {
+                        OPACITY: {
+                            type: ArgumentType.NUMBER,
+                            defaultValue: 100
                         }
                     },
                     filter: [TargetType.SPRITE]

@@ -32950,8 +32950,11 @@ var VPenBlocks = /*#__PURE__*/function () {
      * @property {Path} penPath - the current pen line.
      * @property {Container} drawing - the container for the pen lines.
      * @property {object} penAttributes - the pen attributes.
-     * @property {Array.<number>} penAttributes.color3b - the pen color[RGB 0-255].
+     * @property {object} penAttributes.color3b - the pen color[RGB 0-255].
      * @property {number} penAttributes.diameter - the pen diameter[mm].
+     * @property {string} penAttributes.lineShape - the shape of the line.
+     * @property {object} penAttributes.fillColor3b - the fill color[RGB 0-255].
+     * @property {number} penAttributes.fillOpacity - the fill opacity.
      * @property {object} referencePoint - the reference point for the plotter pen.
      * @private
      */
@@ -33024,14 +33027,37 @@ var VPenBlocks = /*#__PURE__*/function () {
   }, {
     key: "_finishPen",
     value: function _finishPen(penState) {
-      this._removeReferenceLine(penState);
-      if (penState.penPath) {
-        if (penState.penPath.array().length <= 1) {
-          // If the pen line only has one instruction (MoveTo), it hasn't been drawn yet.
-          penState.penPath.remove();
-        }
+      if (!penState.penPath) {
+        return;
       }
+      this._removeReferenceLine(penState);
+      var penPath = penState.penPath;
       penState.penPath = null;
+      var plots = penPath.array();
+      if (plots.length === 1) {
+        // If the pen line only has one instruction (MoveTo), it hasn't been drawn yet.
+        penPath.remove();
+        return;
+      }
+      if (plots.length === 2) {
+        return;
+      }
+      // Close the path if it's a closed line.
+      var start = plots[1][0] === 'L' ? plots[0] : plots[1];
+      var lastLine = plots[plots.length - 1]; // L or T
+      var tolerance = 0.5;
+      if (Math.pow(start[1] - lastLine[1], 2) + Math.pow(start[2] - lastLine[2], 2) > Math.pow(tolerance, 2)) {
+        return;
+      }
+      // It's a closed line.
+      var firstLine = plots[1]; // L or Q
+      if (firstLine[0] === 'Q' && lastLine[0] === 'T') {
+        plots.pop(); // remove T
+        plots.push(_toConsumableArray(plots[1])); // copy the first Q to the end
+        plots[0] = ['M'].concat(_toConsumableArray(plots[1].slice(3))); // move the start to the control point of the first Q
+        plots.splice(1, 1); // remove the first Q
+      }
+      penPath.plot(plots.concat(['Z']));
     }
 
     /**
@@ -33067,7 +33093,10 @@ var VPenBlocks = /*#__PURE__*/function () {
       var penState = this._getPenState(target);
       this._finishPen(penState);
       var newPath = penState.drawing.path(['M'].concat(_toConsumableArray(this._mapToSVGViewBox(target.x, target.y))));
-      newPath.fill('none').stroke({
+      newPath.fill(penState.penAttributes.fillOpacity > 0 ? {
+        color: penState.penAttributes.fillColor3b,
+        opacity: penState.penAttributes.fillOpacity
+      } : 'none').stroke({
         width: penState.penAttributes.diameter * this.stepPerMM,
         color: penState.penAttributes.color3b,
         opacity: penState.penAttributes.opacity,
@@ -33473,6 +33502,66 @@ var VPenBlocks = /*#__PURE__*/function () {
     }
 
     /**
+     * Set fill color of the pen by color tool.
+     * @param {object} args - the block arguments.
+     * @param {string|number} args.COLOR - the color to set.
+     * @param {object} util - utility object provided by the runtime.
+     */
+  }, {
+    key: "setFillColorToColor",
+    value: function setFillColorToColor(args, util) {
+      var target = util.target;
+      var penState = this._getPenState(target);
+      var rgba = Cast$2.toRgbColorObject(args.COLOR);
+      var opacity = 1 - (rgba.a ? rgba.a : 0) / 255;
+      if (penState.penAttributes.fillColor3b.r === rgba.r && penState.penAttributes.fillColor3b.g === rgba.g && penState.penAttributes.fillColor3b.b === rgba.b && penState.penAttributes.fillOpacity === opacity) {
+        // No change.
+        return;
+      }
+      penState.penAttributes.fillColor3b = {
+        r: rgba.r,
+        g: rgba.g,
+        b: rgba.b
+      };
+      penState.penAttributes.fillOpacity = opacity;
+      var penPath = penState.penPath;
+      if (penPath) {
+        penPath.fill(penState.penAttributes.fillOpacity > 0 ? {
+          color: penState.penAttributes.fillColor3b,
+          opacity: penState.penAttributes.fillOpacity
+        } : 'none');
+        this._updatePenSkinFor(target);
+      }
+    }
+
+    /**
+     * Set fill opacity of the pen.
+     * @param {object} args - the block arguments.
+     * @param {number} args.OPACITY - the opacity of the fill color.
+     * @param {object} util - utility object provided by the runtime.
+     */
+  }, {
+    key: "setFillOpacity",
+    value: function setFillOpacity(args, util) {
+      var target = util.target;
+      var penState = this._getPenState(target);
+      var newOpacity = Math.max(0, Math.min(1, Cast$2.toNumber(args.OPACITY) / 100));
+      if (penState.penAttributes.fillOpacity === newOpacity) {
+        // No change.
+        return;
+      }
+      penState.penAttributes.fillOpacity = newOpacity;
+      var penPath = penState.penPath;
+      if (penPath) {
+        penPath.fill(penState.penAttributes.fillOpacity > 0 ? {
+          color: penState.penAttributes.fillColor3b,
+          opacity: penState.penAttributes.fillOpacity
+        } : 'none');
+        this._updatePenSkinFor(target);
+      }
+    }
+
+    /**
      * The pen "stamp" block stamps the current drawable's image onto the pen layer.
      * @param {object} args - the block arguments.
      * @param {object} util - utility object provided by the runtime.
@@ -33731,6 +33820,35 @@ var VPenBlocks = /*#__PURE__*/function () {
             }
           },
           filter: [TargetType$1.SPRITE]
+        }, {
+          opcode: 'setFillColorToColor',
+          blockType: BlockType$1.COMMAND,
+          text: formatMessage({
+            id: 'xcxVPen.setFillColorToColor',
+            default: 'set fill color to [COLOR]',
+            description: 'set fill color of the pen'
+          }),
+          arguments: {
+            COLOR: {
+              type: ArgumentType$1.COLOR
+            }
+          },
+          filter: [TargetType$1.SPRITE]
+        }, {
+          opcode: 'setFillOpacity',
+          blockType: BlockType$1.COMMAND,
+          text: formatMessage({
+            id: 'xcxVPen.setFillOpacity',
+            default: 'set fill opacity to [OPACITY]',
+            description: 'set fill opacity of the pen'
+          }),
+          arguments: {
+            OPACITY: {
+              type: ArgumentType$1.NUMBER,
+              defaultValue: 100
+            }
+          },
+          filter: [TargetType$1.SPRITE]
         }, '---', {
           opcode: 'clearAll',
           blockType: BlockType$1.COMMAND,
@@ -33960,8 +34078,11 @@ var VPenBlocks = /*#__PURE__*/function () {
      * @property {Path} penPath - the current pen line.
      * @property {Container} drawing - the container for the pen lines.
      * @property {object} penAttributes - the pen attributes.
-     * @property {Array.<number>} penAttributes.color3b - the pen color[RGB 0-255].
+     * @property {object} penAttributes.color3b - the pen color[RGB 0-255].
      * @property {number} penAttributes.diameter - the pen diameter[mm].
+     * @property {string} penAttributes.lineShape - the shape of the line.
+     * @property {object} penAttributes.fillColor3b - the fill color[RGB 0-255].
+     * @property {number} penAttributes.fillOpacity - the fill opacity.
      * @property {object} referencePoint - the reference point for the plotter pen.
      */
   }, {
@@ -33984,7 +34105,14 @@ var VPenBlocks = /*#__PURE__*/function () {
           // 0.0-1.0
           diameter: 1,
           // mm
-          lineShape: VPenBlocks.LINE_SHAPES.STRAIGHT
+          lineShape: VPenBlocks.LINE_SHAPES.STRAIGHT,
+          fillColor3b: {
+            r: 0,
+            g: 0,
+            b: 0
+          },
+          // RGB 0-255,
+          fillOpacity: 0 // 0.0-1.0
         },
         referencePoint: null
       };
