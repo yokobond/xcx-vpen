@@ -33582,9 +33582,27 @@ var VPenBlocks = /*#__PURE__*/function () {
       // Stamp the drawable onto the pen layer
       var penState = this._getPenState(target);
       var drawing = penState.drawing;
+
+      // Get the actual stage size from the renderer.
+      var canvasWidth = this.runtime.renderer.canvas.width;
+      var canvasHeight = this.runtime.renderer.canvas.height;
+      var stageResolution = 2;
+      var stageSizeRatio = [this.stageWidth * stageResolution / canvasWidth, this.stageHeight * stageResolution / canvasHeight];
+
+      // Get the costume and its resolution.
+      var costume = target.sprite.costumes[target.currentCostume];
+      var resolution = costume.bitmapResolution || 1; // Default to 1 if resolution isn't specified
+
+      // Stamp the drawable onto the pen layer
       var stamp = drawing.image(drawableURL);
-      stamp.move(drawableData.x, drawableData.y);
-      stamp.size(drawableData.width, drawableData.height);
+
+      // Adjust position and size for stage size change
+      var adjustedX = drawableData.x * stageSizeRatio[0];
+      var adjustedY = drawableData.y * stageSizeRatio[1];
+      var adjustedWidth = drawableData.width * stageSizeRatio[0] / resolution;
+      var adjustedHeight = drawableData.height * stageSizeRatio[1] / resolution;
+      stamp.move(adjustedX, adjustedY);
+      stamp.size(adjustedWidth, adjustedHeight);
       stamp.opacity((100 - target.effects.ghost) / 100);
       this._updatePenSkinFor(target);
     }
