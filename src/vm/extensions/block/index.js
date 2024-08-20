@@ -1001,11 +1001,20 @@ class VPenBlocks {
             showStatusButton: false,
             blocks: [
                 {
+                    opcode: 'clearAll',
+                    blockType: BlockType.COMMAND,
+                    text: formatMessage({
+                        id: 'xcxVPen.clearAll',
+                        default: 'erase all drawings',
+                        description: 'erase all pen trails and stamps'
+                    })
+                },
+                {
                     opcode: 'clear',
                     blockType: BlockType.COMMAND,
                     text: formatMessage({
                         id: 'xcxVPen.clear',
-                        default: 'clear of this sprite',
+                        default: 'erase drawings of this sprite',
                         description: 'clear the pen trails of the sprite'
                     }),
                     filter: [TargetType.SPRITE]
@@ -1152,15 +1161,6 @@ class VPenBlocks {
                 },
                 '---',
                 {
-                    opcode: 'clearAll',
-                    blockType: BlockType.COMMAND,
-                    text: formatMessage({
-                        id: 'xcxVPen.clearAll',
-                        default: 'erase all',
-                        description: 'erase all pen trails and stamps'
-                    })
-                },
-                {
                     opcode: 'stepForMM',
                     blockType: BlockType.REPORTER,
                     text: formatMessage({
@@ -1215,6 +1215,17 @@ class VPenBlocks {
                     }
                 },
                 {
+                    opcode: 'downloadAllDrawing',
+                    blockType: BlockType.COMMAND,
+                    text: formatMessage({
+                        id: 'xcxVPen.downloadAllDrawing',
+                        default: 'download all drawings',
+                        description: 'download the SVG of all sprites'
+                    }),
+                    arguments: {
+                    }
+                },
+                {
                     opcode: 'downloadSpriteDrawing',
                     blockType: BlockType.COMMAND,
                     text: formatMessage({
@@ -1225,17 +1236,6 @@ class VPenBlocks {
                     arguments: {
                     },
                     filter: [TargetType.SPRITE]
-                },
-                {
-                    opcode: 'downloadAllDrawing',
-                    blockType: BlockType.COMMAND,
-                    text: formatMessage({
-                        id: 'xcxVPen.downloadAllDrawing',
-                        default: 'download all drawings',
-                        description: 'download the SVG of all sprites'
-                    }),
-                    arguments: {
-                    }
                 }
             ],
             menus: {
