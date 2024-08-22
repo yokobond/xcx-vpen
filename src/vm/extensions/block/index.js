@@ -593,20 +593,23 @@ class VPenBlocks {
             // If the pen is up, there's nothing to draw.
             return;
         }
+        if (penState.penType === VPenBlocks.PEN_TYPES.TRAIL) {
+            if (isForce) {
+            // Only move the pen if the movement isn't forced (ie. dragged).
+            // This prevents the pen from drawing when the sprite is dragged.
+                this._startPenPath(target);
+                this._updatePenSkinFor(target);
+                return;
+            }
+        }
         if (penState.penType === VPenBlocks.PEN_TYPES.PLOTTER) {
             this._removeReferenceLine(penState);
         }
-        if (isForce) {
-            // Only move the pen if the movement isn't forced (ie. dragged).
-            // This prevents the pen from drawing when the sprite is dragged.
-            this._startPenPath(target);
+        penState.referencePoint = {x: target.x, y: target.y};
+        if (penState.penAttributes.lineShape === VPenBlocks.LINE_SHAPES.CURVE) {
+            this._addCurveToPenPath(penPath, target.x, target.y);
         } else {
-            penState.referencePoint = {x: target.x, y: target.y};
-            if (penState.penAttributes.lineShape === VPenBlocks.LINE_SHAPES.CURVE) {
-                this._addCurveToPenPath(penPath, target.x, target.y);
-            } else {
-                this._addLineToPenPath(penPath, target.x, target.y);
-            }
+            this._addLineToPenPath(penPath, target.x, target.y);
         }
         this._updatePenSkinFor(target);
     }
