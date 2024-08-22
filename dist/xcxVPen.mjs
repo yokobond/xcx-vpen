@@ -24753,18 +24753,78 @@ var RenderedTarget$1 = /*@__PURE__*/getDefaultExportFromCjs(renderedTarget);
 
 var en = {
 	"xcxVPen.name": "Vector Pen",
-	"xcxVPen.doIt": "do it [SCRIPT]"
+	"xcxVPen.clearAll": "erase all drawings",
+	"xcxVPen.clear": "erase drawings of this sprite",
+	"xcxVPen.penDown": "[PEN_TYPE] pen down",
+	"xcxVPen.plot": "plot",
+	"xcxVPen.setPenOpacity": "set pen opacity to [OPACITY]",
+	"xcxVPen.setSize": "set pen size to [SIZE] mm",
+	"xcxVPen.setLineShape": "set line shape to [LINE_SHAPE]",
+	"xcxVPen.setFillColorToColor": "set fill color to [COLOR]",
+	"xcxVPen.setFillOpacity": "set fill opacity to [OPACITY]",
+	"xcxVPen.stepForMM": "steps for [MM] mm",
+	"xcxVPen.mmForStep": "mm for [STEP] steps",
+	"xcxVPen.getStepPerMM": "step/mm",
+	"xcxVPen.setStepPerMM": "set step/mm to [STEP_PER_MM]",
+	"xcxVPen.downloadSpriteDrawing": "download drawings by the sprite",
+	"xcxVPen.downloadAllDrawing": "download all drawings",
+	"xcxVPen.penTypesMenu.trail": "trail",
+	"xcxVPen.penTypesMenu.plotter": "plotter",
+	"xcxVPen.lineShapesMenu.straight": "straight",
+	"xcxVPen.lineShapesMenu.curve": "curve",
+	"xcxVPen.fileNameForSprite": "Enter a name for the file:",
+	"xcxVPen.fileNameForAll": "Enter a name for the file:"
 };
 var ja = {
-	"xcxVPen.name": "Vector Pen",
-	"xcxVPen.doIt": "[SCRIPT] を実行する"
+	"xcxVPen.name": "ベクターペン",
+	"xcxVPen.clearAll": "すべての描画を消す",
+	"xcxVPen.clear": "このスプライトの描画を消す",
+	"xcxVPen.penDown": "[PEN_TYPE]ペンを下ろす",
+	"xcxVPen.plot": "プロットする",
+	"xcxVPen.setPenOpacity": "ペンの不透明度を[OPACITY]にする",
+	"xcxVPen.setSize": "ペンの太さを[SIZE]mm にする",
+	"xcxVPen.setLineShape": "線の種類を[LINE_SHAPE]にする",
+	"xcxVPen.setFillColorToColor": "塗りつぶしの色を[COLOR]にする",
+	"xcxVPen.setFillOpacity": "塗りつぶしの不透明度を[OPACITY]にする",
+	"xcxVPen.stepForMM": "[MM]mm の歩数",
+	"xcxVPen.mmForStep": "[STEP]歩の長さ(mm)",
+	"xcxVPen.getStepPerMM": "歩/mm",
+	"xcxVPen.setStepPerMM": "歩/mm を[STEP_PER_MM]にする",
+	"xcxVPen.downloadSpriteDrawing": "このスプライトの描画をダウンロードする",
+	"xcxVPen.downloadAllDrawing": "すべての描画をダウンロードする",
+	"xcxVPen.penTypesMenu.trail": "トレイル",
+	"xcxVPen.penTypesMenu.plotter": "プロッター",
+	"xcxVPen.lineShapesMenu.straight": "直線",
+	"xcxVPen.lineShapesMenu.curve": "曲線",
+	"xcxVPen.fileNameForSprite": "ファイル名を入力してください:",
+	"xcxVPen.fileNameForAll": "ファイル名を入力してください:"
 };
 var translations = {
 	en: en,
 	ja: ja,
 	"ja-Hira": {
-	"xcxVPen.name": "Vector Pen",
-	"xcxVPen.doIt": "[SCRIPT] をじっこうする"
+	"xcxVPen.name": "ベクターペン",
+	"xcxVPen.clearAll": "すべて の びょうが を けす",
+	"xcxVPen.clear": "この スプライト の びょうが を けす",
+	"xcxVPen.penDown": "[PEN_TYPE]ペン を 下ろす",
+	"xcxVPen.plot": "プロット する",
+	"xcxVPen.setPenOpacity": "ペン の ふとうめいど を[OPACITY]に する",
+	"xcxVPen.setSize": "ペン の ふとさ を[SIZE]mm に する",
+	"xcxVPen.setLineShape": "せん の しゅるい を[LINE_SHAPE]に する",
+	"xcxVPen.setFillColorToColor": "ぬりつぶし の いろ を[COLOR]に する",
+	"xcxVPen.setFillOpacity": "ぬりつぶし の ふとうめいど を[OPACITY]に する",
+	"xcxVPen.stepForMM": "[MM]mm の ほすう",
+	"xcxVPen.mmForStep": "[STEP]ほ の ながさ(mm)",
+	"xcxVPen.getStepPerMM": "ほ/mm",
+	"xcxVPen.setStepPerMM": "ほ/mm を[STEP_PER_MM]に する",
+	"xcxVPen.downloadSpriteDrawing": "この スプライト の びょうが を ダウンロードする",
+	"xcxVPen.downloadAllDrawing": "すべて の びょうが を ダウンロード する",
+	"xcxVPen.penTypesMenu.trail": "トレイル",
+	"xcxVPen.penTypesMenu.plotter": "プロッター",
+	"xcxVPen.lineShapesMenu.straight": "ちょくせん",
+	"xcxVPen.lineShapesMenu.curve": "きょくせん",
+	"xcxVPen.fileNameForSprite": "ファイルめい を にゅうりょく してください:",
+	"xcxVPen.fileNameForAll": "ファイルめい を にゅぅりょく してください:"
 }
 };
 
@@ -33301,23 +33361,26 @@ var VPenBlocks = /*#__PURE__*/function () {
         // If the pen is up, there's nothing to draw.
         return;
       }
+      if (penState.penType === VPenBlocks.PEN_TYPES.TRAIL) {
+        if (isForce) {
+          // Only move the pen if the movement isn't forced (ie. dragged).
+          // This prevents the pen from drawing when the sprite is dragged.
+          this._startPenPath(target);
+          this._updatePenSkinFor(target);
+          return;
+        }
+      }
       if (penState.penType === VPenBlocks.PEN_TYPES.PLOTTER) {
         this._removeReferenceLine(penState);
       }
-      if (isForce) {
-        // Only move the pen if the movement isn't forced (ie. dragged).
-        // This prevents the pen from drawing when the sprite is dragged.
-        this._startPenPath(target);
+      penState.referencePoint = {
+        x: target.x,
+        y: target.y
+      };
+      if (penState.penAttributes.lineShape === VPenBlocks.LINE_SHAPES.CURVE) {
+        this._addCurveToPenPath(penPath, target.x, target.y);
       } else {
-        penState.referencePoint = {
-          x: target.x,
-          y: target.y
-        };
-        if (penState.penAttributes.lineShape === VPenBlocks.LINE_SHAPES.CURVE) {
-          this._addCurveToPenPath(penPath, target.x, target.y);
-        } else {
-          this._addLineToPenPath(penPath, target.x, target.y);
-        }
+        this._addLineToPenPath(penPath, target.x, target.y);
       }
       this._updatePenSkinFor(target);
     }
@@ -33360,10 +33423,10 @@ var VPenBlocks = /*#__PURE__*/function () {
       var penState = this._getPenState(target);
       if (penState.penPath) {
         if (penState.penType === args.PEN_TYPE) {
-          // If there's already a line started, end it.
+          // If there's already a same type line started, nothing to do.
           return;
         }
-        this._finishPen(penState);
+        this.penUp(args, util);
       }
       penState.penType = args.PEN_TYPE;
       if (penState.penType === VPenBlocks.PEN_TYPES.TRAIL) {
@@ -33648,9 +33711,13 @@ var VPenBlocks = /*#__PURE__*/function () {
       if (!penState || !penState.drawing) {
         return null;
       }
+      var drawings = penState.drawing.children();
+      if (drawings.length === 0) {
+        return null;
+      }
       var spriteGroup = svgContainer.group();
       spriteGroup.id(target.sprite.name);
-      penState.drawing.children().forEach(function (child) {
+      drawings.forEach(function (child) {
         spriteGroup.add(child.clone());
       });
       return spriteGroup;
@@ -33708,6 +33775,8 @@ var VPenBlocks = /*#__PURE__*/function () {
       var saveSVG = this._createDrawingSVG();
       util.runtime.targets.filter(function (target) {
         return target.isSprite();
+      }).sort(function (a, b) {
+        return _this3._getSkinIDFor(a) - _this3._getSkinIDFor(b);
       }).forEach(function (target) {
         _this3._addSpriteDrawingTo(target, saveSVG);
       });
@@ -33729,11 +33798,19 @@ var VPenBlocks = /*#__PURE__*/function () {
         blockIconURI: img,
         showStatusButton: false,
         blocks: [{
+          opcode: 'clearAll',
+          blockType: BlockType$1.COMMAND,
+          text: formatMessage({
+            id: 'xcxVPen.clearAll',
+            default: 'erase all drawings',
+            description: 'erase all pen trails and stamps'
+          })
+        }, {
           opcode: 'clear',
           blockType: BlockType$1.COMMAND,
           text: formatMessage({
             id: 'xcxVPen.clear',
-            default: 'clear of this sprite',
+            default: 'erase drawings of this sprite',
             description: 'clear the pen trails of the sprite'
           }),
           filter: [TargetType$1.SPRITE]
@@ -33868,14 +33945,6 @@ var VPenBlocks = /*#__PURE__*/function () {
           },
           filter: [TargetType$1.SPRITE]
         }, '---', {
-          opcode: 'clearAll',
-          blockType: BlockType$1.COMMAND,
-          text: formatMessage({
-            id: 'xcxVPen.clearAll',
-            default: 'erase all',
-            description: 'erase all pen trails and stamps'
-          })
-        }, {
           opcode: 'stepForMM',
           blockType: BlockType$1.REPORTER,
           text: formatMessage({
@@ -33926,6 +33995,15 @@ var VPenBlocks = /*#__PURE__*/function () {
             }
           }
         }, {
+          opcode: 'downloadAllDrawing',
+          blockType: BlockType$1.COMMAND,
+          text: formatMessage({
+            id: 'xcxVPen.downloadAllDrawing',
+            default: 'download all drawings',
+            description: 'download the SVG of all sprites'
+          }),
+          arguments: {}
+        }, {
           opcode: 'downloadSpriteDrawing',
           blockType: BlockType$1.COMMAND,
           text: formatMessage({
@@ -33935,15 +34013,6 @@ var VPenBlocks = /*#__PURE__*/function () {
           }),
           arguments: {},
           filter: [TargetType$1.SPRITE]
-        }, {
-          opcode: 'downloadAllDrawing',
-          blockType: BlockType$1.COMMAND,
-          text: formatMessage({
-            id: 'xcxVPen.downloadAllDrawing',
-            default: 'download all drawings',
-            description: 'download the SVG of all sprites'
-          }),
-          arguments: {}
         }],
         menus: {
           penTypesMenu: {
