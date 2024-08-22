@@ -645,10 +645,10 @@ class VPenBlocks {
         const penState = this._getPenState(target);
         if (penState.penPath) {
             if (penState.penType === args.PEN_TYPE) {
-                // If there's already a line started, end it.
+                // If there's already a same type line started, nothing to do.
                 return;
             }
-            this._finishPen(penState);
+            this.penUp(args, util);
         }
         penState.penType = args.PEN_TYPE;
         if (penState.penType === VPenBlocks.PEN_TYPES.TRAIL) {
