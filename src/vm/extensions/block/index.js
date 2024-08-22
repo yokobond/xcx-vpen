@@ -921,9 +921,13 @@ class VPenBlocks {
         if (!penState || !penState.drawing) {
             return null;
         }
+        const drawings = penState.drawing.children();
+        if (drawings.length === 0) {
+            return null;
+        }
         const spriteGroup = svgContainer.group();
         spriteGroup.id(target.sprite.name);
-        penState.drawing.children().forEach(child => {
+        drawings.forEach(child => {
             spriteGroup.add(child.clone());
         });
         return spriteGroup;
