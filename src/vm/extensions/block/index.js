@@ -980,7 +980,9 @@ class VPenBlocks {
             return 'cancelled';
         }
         const saveSVG = this._createDrawingSVG();
-        util.runtime.targets.filter(target => target.isSprite())
+        util.runtime.targets
+            .filter(target => target.isSprite())
+            .sort((a, b) => this._getSkinIDFor(a) - this._getSkinIDFor(b))
             .forEach(target => {
                 this._addSpriteDrawingTo(target, saveSVG);
             });
