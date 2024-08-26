@@ -24762,6 +24762,12 @@ var en = {
 	"xcxVPen.setLineShape": "set line shape to [LINE_SHAPE]",
 	"xcxVPen.setFillColorToColor": "set fill color to [COLOR]",
 	"xcxVPen.setFillOpacity": "set fill opacity to [OPACITY]",
+	"xcxVPen.changeLayerTo": "change layer to [LAYER]",
+	"xcxVPen.moveLayerBy": "move [DIRECTION] [LAYERS] layers",
+	"xcxVPen.changeLayerMenu.top": "top",
+	"xcxVPen.changeLayerMenu.bottom": "bottom",
+	"xcxVPen.moveLayerDirectionMenu.up": "up",
+	"xcxVPen.moveLayerDirectionMenu.down": "down",
 	"xcxVPen.stepForMM": "steps for [MM] mm",
 	"xcxVPen.mmForStep": "mm for [STEP] steps",
 	"xcxVPen.getStepPerMM": "step/mm",
@@ -24786,6 +24792,12 @@ var ja = {
 	"xcxVPen.setLineShape": "線の種類を[LINE_SHAPE]にする",
 	"xcxVPen.setFillColorToColor": "塗りつぶしの色を[COLOR]にする",
 	"xcxVPen.setFillOpacity": "塗りつぶしの不透明度を[OPACITY]にする",
+	"xcxVPen.changeLayerTo": "[LAYER]にする",
+	"xcxVPen.moveLayerBy": "[LAYERS]層[DIRECTION]",
+	"xcxVPen.changeLayerMenu.top": "最前面",
+	"xcxVPen.changeLayerMenu.bottom": "最背面",
+	"xcxVPen.moveLayerDirectionMenu.up": "手前へ出す",
+	"xcxVPen.moveLayerDirectionMenu.down": "背後へ送る",
 	"xcxVPen.stepForMM": "[MM]mm の歩数",
 	"xcxVPen.mmForStep": "[STEP]歩の長さ(mm)",
 	"xcxVPen.getStepPerMM": "歩/mm",
@@ -24813,6 +24825,12 @@ var translations = {
 	"xcxVPen.setLineShape": "せん の しゅるい を[LINE_SHAPE]に する",
 	"xcxVPen.setFillColorToColor": "ぬりつぶし の いろ を[COLOR]に する",
 	"xcxVPen.setFillOpacity": "ぬりつぶし の ふとうめいど を[OPACITY]に する",
+	"xcxVPen.changeLayerTo": "[LAYER]に する",
+	"xcxVPen.moveLayerBy": "[LAYERS]そう[DIRECTION]",
+	"xcxVPen.changeLayerMenu.top": "さいぜんめん",
+	"xcxVPen.changeLayerMenu.bottom": "さいはいめん",
+	"xcxVPen.moveLayerDirectionMenu.up": "てまえ へ だす",
+	"xcxVPen.moveLayerDirectionMenu.down": "はいご へ おくる",
 	"xcxVPen.stepForMM": "[MM]mm の ほすう",
 	"xcxVPen.mmForStep": "[STEP]ほ の ながさ(mm)",
 	"xcxVPen.getStepPerMM": "ほ/mm",
@@ -33671,6 +33689,115 @@ var VPenBlocks = /*#__PURE__*/function () {
     }
 
     /**
+     * Move drawing to the front layer.
+     * @param {number} drawableID - the drawable to move.
+     */
+  }, {
+    key: "_moveLayerToFront",
+    value: function _moveLayerToFront(drawableID) {
+      // RenderWebGL.setDrawableOrder() has a bug which breaks the order of groups when moving drawable up.
+      // So we move the drawable up under the sprite layer.
+      var renderer = this.runtime.renderer;
+      var topOrder = renderer._layerGroups[StageLayering$2.SPRITE_LAYER].drawListOffset - 1;
+      renderer.setDrawableOrder(drawableID, topOrder, StageLayering$2.PEN_LAYER, false);
+    }
+
+    /**
+     * Move drawing to the back layer.
+     * @param {number} drawableID - the drawable to move.
+     */
+  }, {
+    key: "_moveLayerToBack",
+    value: function _moveLayerToBack(drawableID) {
+      this.runtime.renderer.setDrawableOrder(drawableID, -Infinity, StageLayering$2.PEN_LAYER, false);
+    }
+
+    /**
+     * Move drawing forward a number of layers.
+     * @param {number} drawableID - the drawable to move.
+     * @param {number} nLayers How many layers to go forward.
+     */
+  }, {
+    key: "_moveLayerUp",
+    value: function _moveLayerUp(drawableID, nLayers) {
+      // RenderWebGL.setDrawableOrder() has a bug which breaks the order of groups when moving drawable up.
+      // So we move the drawable up under the sprite layer.
+      var renderer = this.runtime.renderer;
+      var drawableOrder = renderer.getDrawableOrder(drawableID);
+      var topOrder = renderer._layerGroups[StageLayering$2.SPRITE_LAYER].drawListOffset - 1;
+      nLayers = Math.min(nLayers, topOrder - drawableOrder);
+      renderer.setDrawableOrder(drawableID, nLayers, StageLayering$2.PEN_LAYER, true);
+    }
+
+    /**
+     * Move drawing backward a number of layers.
+     * @param {number} drawableID - the drawable to move.
+     * @param {number} nLayers How many layers to go backward.
+     */
+  }, {
+    key: "_moveLayerDown",
+    value: function _moveLayerDown(drawableID, nLayers) {
+      this._moveLayerUp(drawableID, -nLayers);
+    }
+
+    /**
+     * Change the layer of the drawing.
+     * @param {object} args - the block arguments.
+     * @param {object} util - utility object provided by the runtime.
+     * @param {string} args.LAYER - the layer name to change to.
+     */
+  }, {
+    key: "changeLayerTo",
+    value: function changeLayerTo(args, util) {
+      var target = util.target;
+      var penState = this._getPenState(target);
+      var layer = args.LAYER;
+      if (layer === VPenBlocks.CHANGE_LAYER.TOP) {
+        this._moveLayerToFront(penState.drawableID);
+      } else if (layer === VPenBlocks.CHANGE_LAYER.BOTTOM) {
+        this._moveLayerToBack(penState.drawableID);
+      }
+      this.runtime.requestRedraw();
+    }
+
+    /**
+     * Move the drawing a number of layers.
+     * @param {object} args - the block arguments.
+     * @param {object} util - utility object provided by the runtime.
+     * @param {number} args.LAYERS - the number of layers to move.
+     * @param {string} args.DIRECTION - the direction to move.
+     */
+  }, {
+    key: "moveLayerBy",
+    value: function moveLayerBy(args, util) {
+      var target = util.target;
+      var penState = this._getPenState(target);
+      var layerCount = Cast$2.toNumber(args.LAYERS);
+      if (args.DIRECTION === VPenBlocks.MOVE_LAYER.UP) {
+        this._moveLayerUp(penState.drawableID, layerCount);
+      } else if (args.DIRECTION === VPenBlocks.MOVE_LAYER.DOWN) {
+        this._moveLayerDown(penState.drawableID, layerCount);
+      }
+      this.runtime.requestRedraw();
+    }
+
+    /**
+     * Get the order of the drawing in the all drawable.
+     * @param {object} target - the target to get the order for.
+     * @returns {number} - the order of the drawing.
+     */
+  }, {
+    key: "_getDrawableOrderFor",
+    value: function _getDrawableOrderFor(target) {
+      var penState = this._penStates[target.id];
+      if (!penState) {
+        return -1;
+      }
+      var renderer = this.runtime.renderer;
+      return renderer.getDrawableOrder(penState.drawableID);
+    }
+
+    /**
      * Clears the pen layer's contents.
      */
   }, {
@@ -33776,7 +33903,7 @@ var VPenBlocks = /*#__PURE__*/function () {
       util.runtime.targets.filter(function (target) {
         return target.isSprite();
       }).sort(function (a, b) {
-        return _this3._getSkinIDFor(a) - _this3._getSkinIDFor(b);
+        return _this3._getDrawableOrderFor(a) - _this3._getDrawableOrderFor(b);
       }).forEach(function (target) {
         _this3._addSpriteDrawingTo(target, saveSVG);
       });
@@ -33944,6 +34071,40 @@ var VPenBlocks = /*#__PURE__*/function () {
             }
           },
           filter: [TargetType$1.SPRITE]
+        }, {
+          opcode: 'changeLayerTo',
+          blockType: BlockType$1.COMMAND,
+          text: formatMessage({
+            id: 'xcxVPen.changeLayerTo',
+            default: 'change layer to [LAYER]',
+            description: 'change the layer of the pen'
+          }),
+          arguments: {
+            LAYER: {
+              type: ArgumentType$1.STRING,
+              menu: 'changeLayerMenu'
+            }
+          },
+          filter: [TargetType$1.SPRITE]
+        }, {
+          opcode: 'moveLayerBy',
+          blockType: BlockType$1.COMMAND,
+          text: formatMessage({
+            id: 'xcxVPen.moveLayerBy',
+            default: 'move [DIRECTION] [LAYERS] layers',
+            description: 'move the layer of the pen'
+          }),
+          arguments: {
+            DIRECTION: {
+              type: ArgumentType$1.STRING,
+              menu: 'moveLayerDirectionMenu'
+            },
+            LAYERS: {
+              type: ArgumentType$1.NUMBER,
+              defaultValue: 1
+            }
+          },
+          filter: [TargetType$1.SPRITE]
         }, '---', {
           opcode: 'stepForMM',
           blockType: BlockType$1.REPORTER,
@@ -34022,6 +34183,14 @@ var VPenBlocks = /*#__PURE__*/function () {
           lineShapesMenu: {
             acceptReporters: false,
             items: 'getLineShapesMenuItems'
+          },
+          changeLayerMenu: {
+            acceptReporters: false,
+            items: 'getChangeLayerMenuItems'
+          },
+          moveLayerDirectionMenu: {
+            acceptReporters: false,
+            items: 'getMoveLayerDirectionMenuItems'
           }
         }
       };
@@ -34062,6 +34231,44 @@ var VPenBlocks = /*#__PURE__*/function () {
           description: 'curve line shape'
         }),
         value: VPenBlocks.LINE_SHAPES.CURVE
+      }];
+    }
+  }, {
+    key: "getChangeLayerMenuItems",
+    value: function getChangeLayerMenuItems() {
+      return [{
+        text: formatMessage({
+          id: 'xcxVPen.changeLayerMenu.top',
+          default: 'top',
+          description: 'change pen layer to top'
+        }),
+        value: VPenBlocks.CHANGE_LAYER.TOP
+      }, {
+        text: formatMessage({
+          id: 'xcxVPen.changeLayerMenu.bottom',
+          default: 'bottom',
+          description: 'change pen layer to bottom'
+        }),
+        value: VPenBlocks.CHANGE_LAYER.BOTTOM
+      }];
+    }
+  }, {
+    key: "getMoveLayerDirectionMenuItems",
+    value: function getMoveLayerDirectionMenuItems() {
+      return [{
+        text: formatMessage({
+          id: 'xcxVPen.moveLayerDirectionMenu.up',
+          default: 'up',
+          description: 'move pen layer up'
+        }),
+        value: VPenBlocks.MOVE_LAYER.UP
+      }, {
+        text: formatMessage({
+          id: 'xcxVPen.moveLayerDirectionMenu.down',
+          default: 'down',
+          description: 'move pen layer down'
+        }),
+        value: VPenBlocks.MOVE_LAYER.DOWN
       }];
     }
   }], [{
@@ -34154,6 +34361,36 @@ var VPenBlocks = /*#__PURE__*/function () {
       return {
         STRAIGHT: 'straight',
         CURVE: 'curve'
+      };
+    }
+
+    /**
+     * The name of layers.
+     * @type {object}
+     * @property {string} TOP - the top layer.
+     * @property {string} BOTTOM - the bottom layer.
+     */
+  }, {
+    key: "CHANGE_LAYER",
+    get: function get() {
+      return {
+        TOP: 'top',
+        BOTTOM: 'bottom'
+      };
+    }
+
+    /**
+     * The directions to move the pen layer.
+     * @type {object}
+     * @property {string} UP - move the pen layer up.
+     * @property {string} DOWN - move the pen layer down.
+     */
+  }, {
+    key: "MOVE_LAYER",
+    get: function get() {
+      return {
+        UP: 'up',
+        DOWN: 'down'
       };
     }
 

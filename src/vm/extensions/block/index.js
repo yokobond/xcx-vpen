@@ -125,6 +125,32 @@ class VPenBlocks {
     }
 
     /**
+     * The name of layers.
+     * @type {object}
+     * @property {string} TOP - the top layer.
+     * @property {string} BOTTOM - the bottom layer.
+     */
+    static get CHANGE_LAYER () {
+        return {
+            TOP: 'top',
+            BOTTOM: 'bottom'
+        };
+    }
+
+    /**
+     * The directions to move the pen layer.
+     * @type {object}
+     * @property {string} UP - move the pen layer up.
+     * @property {string} DOWN - move the pen layer down.
+     */
+    static get MOVE_LAYER () {
+        return {
+            UP: 'up',
+            DOWN: 'down'
+        };
+    }
+
+    /**
      * The default state of the vector pen.
      * @type {object}
      * @property {int} skinID - the ID of the renderer Skin corresponding to the pen layer.
@@ -888,6 +914,101 @@ class VPenBlocks {
     }
 
     /**
+     * Move drawing to the front layer.
+     * @param {number} drawableID - the drawable to move.
+     */
+    _moveLayerToFront (drawableID) {
+        // RenderWebGL.setDrawableOrder() has a bug which breaks the order of groups when moving drawable up.
+        // So we move the drawable up under the sprite layer.
+        const renderer = this.runtime.renderer;
+        const topOrder = renderer._layerGroups[StageLayering.SPRITE_LAYER].drawListOffset - 1;
+        renderer.setDrawableOrder(drawableID, topOrder, StageLayering.PEN_LAYER, false);
+    }
+
+    /**
+     * Move drawing to the back layer.
+     * @param {number} drawableID - the drawable to move.
+     */
+    _moveLayerToBack (drawableID) {
+        this.runtime.renderer.setDrawableOrder(drawableID, -Infinity, StageLayering.PEN_LAYER, false);
+    }
+
+    /**
+     * Move drawing forward a number of layers.
+     * @param {number} drawableID - the drawable to move.
+     * @param {number} nLayers How many layers to go forward.
+     */
+    _moveLayerUp (drawableID, nLayers) {
+        // RenderWebGL.setDrawableOrder() has a bug which breaks the order of groups when moving drawable up.
+        // So we move the drawable up under the sprite layer.
+        const renderer = this.runtime.renderer;
+        const drawableOrder = renderer.getDrawableOrder(drawableID);
+        const topOrder = renderer._layerGroups[StageLayering.SPRITE_LAYER].drawListOffset - 1;
+        nLayers = Math.min(nLayers, topOrder - drawableOrder);
+        renderer.setDrawableOrder(drawableID, nLayers, StageLayering.PEN_LAYER, true);
+    }
+
+    /**
+     * Move drawing backward a number of layers.
+     * @param {number} drawableID - the drawable to move.
+     * @param {number} nLayers How many layers to go backward.
+     */
+    _moveLayerDown (drawableID, nLayers) {
+        this._moveLayerUp(drawableID, -nLayers);
+    }
+
+    /**
+     * Change the layer of the drawing.
+     * @param {object} args - the block arguments.
+     * @param {object} util - utility object provided by the runtime.
+     * @param {string} args.LAYER - the layer name to change to.
+     */
+    changeLayerTo (args, util) {
+        const target = util.target;
+        const penState = this._getPenState(target);
+        const layer = args.LAYER;
+        if (layer === VPenBlocks.CHANGE_LAYER.TOP) {
+            this._moveLayerToFront(penState.drawableID);
+        } else if (layer === VPenBlocks.CHANGE_LAYER.BOTTOM) {
+            this._moveLayerToBack(penState.drawableID);
+        }
+        this.runtime.requestRedraw();
+    }
+
+    /**
+     * Move the drawing a number of layers.
+     * @param {object} args - the block arguments.
+     * @param {object} util - utility object provided by the runtime.
+     * @param {number} args.LAYERS - the number of layers to move.
+     * @param {string} args.DIRECTION - the direction to move.
+     */
+    moveLayerBy (args, util) {
+        const target = util.target;
+        const penState = this._getPenState(target);
+        const layerCount = Cast.toNumber(args.LAYERS);
+        if (args.DIRECTION === VPenBlocks.MOVE_LAYER.UP) {
+            this._moveLayerUp(penState.drawableID, layerCount);
+        } else if (args.DIRECTION === VPenBlocks.MOVE_LAYER.DOWN) {
+            this._moveLayerDown(penState.drawableID, layerCount);
+        }
+        this.runtime.requestRedraw();
+    }
+
+    /**
+     * Get the order of the drawing in the all drawable.
+     * @param {object} target - the target to get the order for.
+     * @returns {number} - the order of the drawing.
+     */
+    _getDrawableOrderFor (target) {
+        const penState = this._penStates[target.id];
+        if (!penState) {
+            return -1;
+        }
+        const renderer = this.runtime.renderer;
+        return renderer.getDrawableOrder(penState.drawableID);
+    }
+
+    /**
      * Clears the pen layer's contents.
      */
     clearAll () {
@@ -989,7 +1110,7 @@ class VPenBlocks {
         const saveSVG = this._createDrawingSVG();
         util.runtime.targets
             .filter(target => target.isSprite())
-            .sort((a, b) => this._getSkinIDFor(a) - this._getSkinIDFor(b))
+            .sort((a, b) => this._getDrawableOrderFor(a) - this._getDrawableOrderFor(b))
             .forEach(target => {
                 this._addSpriteDrawingTo(target, saveSVG);
             });
@@ -1168,6 +1289,42 @@ class VPenBlocks {
                     },
                     filter: [TargetType.SPRITE]
                 },
+                {
+                    opcode: 'changeLayerTo',
+                    blockType: BlockType.COMMAND,
+                    text: formatMessage({
+                        id: 'xcxVPen.changeLayerTo',
+                        default: 'change layer to [LAYER]',
+                        description: 'change the layer of the pen'
+                    }),
+                    arguments: {
+                        LAYER: {
+                            type: ArgumentType.STRING,
+                            menu: 'changeLayerMenu'
+                        }
+                    },
+                    filter: [TargetType.SPRITE]
+                },
+                {
+                    opcode: 'moveLayerBy',
+                    blockType: BlockType.COMMAND,
+                    text: formatMessage({
+                        id: 'xcxVPen.moveLayerBy',
+                        default: 'move [DIRECTION] [LAYERS] layers',
+                        description: 'move the layer of the pen'
+                    }),
+                    arguments: {
+                        DIRECTION: {
+                            type: ArgumentType.STRING,
+                            menu: 'moveLayerDirectionMenu'
+                        },
+                        LAYERS: {
+                            type: ArgumentType.NUMBER,
+                            defaultValue: 1
+                        }
+                    },
+                    filter: [TargetType.SPRITE]
+                },
                 '---',
                 {
                     opcode: 'stepForMM',
@@ -1255,6 +1412,14 @@ class VPenBlocks {
                 lineShapesMenu: {
                     acceptReporters: false,
                     items: 'getLineShapesMenuItems'
+                },
+                changeLayerMenu: {
+                    acceptReporters: false,
+                    items: 'getChangeLayerMenuItems'
+                },
+                moveLayerDirectionMenu: {
+                    acceptReporters: false,
+                    items: 'getMoveLayerDirectionMenuItems'
                 }
             }
         };
@@ -1298,6 +1463,48 @@ class VPenBlocks {
                     description: 'curve line shape'
                 }),
                 value: VPenBlocks.LINE_SHAPES.CURVE
+            }
+        ];
+    }
+
+    getChangeLayerMenuItems () {
+        return [
+            {
+                text: formatMessage({
+                    id: 'xcxVPen.changeLayerMenu.top',
+                    default: 'top',
+                    description: 'change pen layer to top'
+                }),
+                value: VPenBlocks.CHANGE_LAYER.TOP
+            },
+            {
+                text: formatMessage({
+                    id: 'xcxVPen.changeLayerMenu.bottom',
+                    default: 'bottom',
+                    description: 'change pen layer to bottom'
+                }),
+                value: VPenBlocks.CHANGE_LAYER.BOTTOM
+            }
+        ];
+    }
+
+    getMoveLayerDirectionMenuItems () {
+        return [
+            {
+                text: formatMessage({
+                    id: 'xcxVPen.moveLayerDirectionMenu.up',
+                    default: 'up',
+                    description: 'move pen layer up'
+                }),
+                value: VPenBlocks.MOVE_LAYER.UP
+            },
+            {
+                text: formatMessage({
+                    id: 'xcxVPen.moveLayerDirectionMenu.down',
+                    default: 'down',
+                    description: 'move pen layer down'
+                }),
+                value: VPenBlocks.MOVE_LAYER.DOWN
             }
         ];
     }
