@@ -1,10 +1,19 @@
 # Vector Pen
-An example extension for [Xcratch](https://xcratch.github.io/)
-
-This extension add extra-block "do it", that executes string in its input field as a sentence in Javascript and return the result.
+This extension provides SVG based pen features for [Xcratch](https://xcratch.github.io/)
 
 
 ## ✨ What You Can Do With This Extension
+
+- separate pen layer for each sprite
+- draw line with trail or plotter type pen
+- select line type (straight or curve)
+- change line color, opacity and width
+- stamp costume with effects
+- draw closed line
+- fill closed line with color
+- change the order of the pen layers
+- save the drawings as a SVG file
+- drawing dimensions can be specified in mm
 
 Play [Example Project](https://xcratch.github.io/editor/#https://yokobond.github.io/xcx-vpen/projects/example.sb3) to look at what you can do with "Vector Pen" extension. 
 <iframe src="https://xcratch.github.io/editor/player#https://yokobond.github.io/xcx-vpen/projects/example.sb3" width="540px" height="460px"></iframe>
@@ -22,47 +31,6 @@ https://yokobond.github.io/xcx-vpen/dist/xcxVPen.mjs
 ```
 5. Click 'OK' button
 6. Now you can use the blocks of this extension
-
-
-## Development
-
-### Install Dependencies
-
-```sh
-npm install
-```
-
-### Setup Development Environment
-
-Change ```vmSrcOrg``` to your local ```scratch-vm``` directory in ```./scripts/setup-dev.js``` then run setup-dev script to setup development environment.
-
-```sh
-npm run setup-dev
-```
-
-### Bundle into a Module
-
-Run build script to bundle this extension into a module file which could be loaded on Xcratch.
-
-```sh
-npm run build
-```
-
-### Watch and Bundle
-
-Run watch script to watch the changes of source files and bundle automatically.
-
-```sh
-npm run watch
-```
-
-### Test
-
-Run test script to test this extension.
-
-```sh
-npm run test
-```
 
 
 ## 🏠 Home Page
