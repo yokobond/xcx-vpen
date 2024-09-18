@@ -886,26 +886,25 @@ class VPenBlocks {
         const drawing = penState.drawing;
 
         // Get the actual stage size from the renderer.
-        const canvasWidth = this.runtime.renderer.canvas.width;
-        const canvasHeight = this.runtime.renderer.canvas.height;
-        const stageResolution = 2;
-        const stageSizeRatio = [
-            this.stageWidth * stageResolution / canvasWidth,
-            this.stageHeight * stageResolution / canvasHeight
+        const canvasWidth = this.runtime.renderer.canvas.clientWidth;
+        const canvasHeight = this.runtime.renderer.canvas.clientHeight;
+        const stageResolution = [
+            canvasWidth / this.stageWidth,
+            canvasHeight / this.stageHeight
         ];
 
         // Get the costume and its resolution.
         const costume = target.sprite.costumes[target.currentCostume];
-        const resolution = costume.bitmapResolution || 1; // Default to 1 if resolution isn't specified
+        const costumeResolution = costume.bitmapResolution || 1; // Default to 1 if resolution isn't specified
 
         // Stamp the drawable onto the pen layer
         const stamp = drawing.image(drawableURL);
 
         // Adjust position and size for stage size change
-        const adjustedX = drawableData.x * stageSizeRatio[0];
-        const adjustedY = drawableData.y * stageSizeRatio[1];
-        const adjustedWidth = drawableData.width * stageSizeRatio[0] / resolution;
-        const adjustedHeight = drawableData.height * stageSizeRatio[1] / resolution;
+        const adjustedX = drawableData.x / stageResolution[0];
+        const adjustedY = drawableData.y / stageResolution[1];
+        const adjustedWidth = (drawableData.width / stageResolution[0]) / costumeResolution;
+        const adjustedHeight = (drawableData.height / stageResolution[1]) / costumeResolution;
 
         stamp.move(adjustedX, adjustedY);
         stamp.size(adjustedWidth, adjustedHeight);

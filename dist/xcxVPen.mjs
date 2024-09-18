@@ -624,11 +624,13 @@ var Cast$1 = /*#__PURE__*/function () {
         }
         return value;
       }
-      // Replace full-width numbers with half-width ones.
-      value = value.replace(/[０-９＋．ｅ]/g, function (s) {
-        return String.fromCharCode(s.charCodeAt(0) - 0xFEE0);
-      });
-      value = value.replace(/[-－﹣−‐⁃‑‒–—﹘―⎯⏤ーｰ─━]/g, '-');
+      if (typeof value === 'string') {
+        // Replace full-width numbers with half-width ones.
+        value = value.replace(/[０-９＋．ｅ]/g, function (s) {
+          return String.fromCharCode(s.charCodeAt(0) - 0xFEE0);
+        });
+        value = value.replace(/[-－﹣−‐⁃‑‒–—﹘―⎯⏤ーｰ─━]/g, '-');
+      }
       var n = Number(value);
       if (Number.isNaN(n)) {
         // Scratch treats NaN as 0, when needed as a number.
@@ -33665,23 +33667,22 @@ var VPenBlocks = /*#__PURE__*/function () {
       var drawing = penState.drawing;
 
       // Get the actual stage size from the renderer.
-      var canvasWidth = this.runtime.renderer.canvas.width;
-      var canvasHeight = this.runtime.renderer.canvas.height;
-      var stageResolution = 2;
-      var stageSizeRatio = [this.stageWidth * stageResolution / canvasWidth, this.stageHeight * stageResolution / canvasHeight];
+      var canvasWidth = this.runtime.renderer.canvas.clientWidth;
+      var canvasHeight = this.runtime.renderer.canvas.clientHeight;
+      var stageResolution = [canvasWidth / this.stageWidth, canvasHeight / this.stageHeight];
 
       // Get the costume and its resolution.
       var costume = target.sprite.costumes[target.currentCostume];
-      var resolution = costume.bitmapResolution || 1; // Default to 1 if resolution isn't specified
+      var costumeResolution = costume.bitmapResolution || 1; // Default to 1 if resolution isn't specified
 
       // Stamp the drawable onto the pen layer
       var stamp = drawing.image(drawableURL);
 
       // Adjust position and size for stage size change
-      var adjustedX = drawableData.x * stageSizeRatio[0];
-      var adjustedY = drawableData.y * stageSizeRatio[1];
-      var adjustedWidth = drawableData.width * stageSizeRatio[0] / resolution;
-      var adjustedHeight = drawableData.height * stageSizeRatio[1] / resolution;
+      var adjustedX = drawableData.x / stageResolution[0];
+      var adjustedY = drawableData.y / stageResolution[1];
+      var adjustedWidth = drawableData.width / stageResolution[0] / costumeResolution;
+      var adjustedHeight = drawableData.height / stageResolution[1] / costumeResolution;
       stamp.move(adjustedX, adjustedY);
       stamp.size(adjustedWidth, adjustedHeight);
       stamp.opacity((100 - target.effects.ghost) / 100);
