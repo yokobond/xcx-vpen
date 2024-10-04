@@ -1064,26 +1064,18 @@ class VPenBlocks {
      */
     downloadSpriteDrawing (args, util) {
         const target = util.target;
+        let fileName = Cast.toString(args.FILENAME);
         const penState = this._penStateFor(target);
         if (!penState || !penState.drawing) {
             return 'no drawing';
         }
         // eslint-disable-next-line no-alert
-        const fileName = prompt(
-            formatMessage({
-                id: 'xcxVPen.fileNameForSprite',
-                default: 'Enter a name for the file:',
-                description: 'prompt for the file name to save the sprite drawing'
-            }),
-            target.sprite.name
-        );
         if (fileName === null || fileName === '') {
-            return 'cancelled';
+            fileName = target.sprite.name;
         }
         const saveSVG = this._createDrawingSVG();
         this._addSpriteDrawingTo(target, saveSVG);
-        this._saveSVGAsFile(saveSVG, fileName);
-        return 'saved';
+        return this._saveSVGAsFile(saveSVG, fileName);
     }
 
     /**
@@ -1095,26 +1087,24 @@ class VPenBlocks {
      */
     downloadAllDrawing (args, util) {
         // eslint-disable-next-line no-alert
-        const fileName = prompt(
-            formatMessage({
-                id: 'xcxVPen.fileNameForAll',
-                default: 'Enter a name for the file:',
-                description: 'prompt for the file name to save the all drawing'
-            }),
-            'vpen'
-        );
+        let fileName = Cast.toString(args.FILENAME);
         if (fileName === null || fileName === '') {
-            return 'cancelled';
+            fileName = 'vpen';
         }
         const saveSVG = this._createDrawingSVG();
-        util.runtime.targets
+        const saveTargets = util.runtime.targets
             .filter(target => target.isSprite())
-            .sort((a, b) => this._getDrawableOrderFor(a) - this._getDrawableOrderFor(b))
-            .forEach(target => {
-                this._addSpriteDrawingTo(target, saveSVG);
-            });
-        this._saveSVGAsFile(saveSVG, fileName);
-        return 'saved';
+            .sort((a, b) => this._getDrawableOrderFor(a) - this._getDrawableOrderFor(b));
+        if (saveTargets.length === 0) {
+            return 'no drawing';
+        }
+        saveTargets.forEach(target => {
+            this._addSpriteDrawingTo(target, saveSVG);
+        });
+        if (saveSVG.children().length === 0) {
+            return 'no drawing';
+        }
+        return this._saveSVGAsFile(saveSVG, fileName);
     }
 
     /**
@@ -1384,10 +1374,14 @@ class VPenBlocks {
                     blockType: BlockType.COMMAND,
                     text: formatMessage({
                         id: 'xcxVPen.downloadAllDrawing',
-                        default: 'download all drawings',
+                        default: 'download all drawings named [FILENAME]',
                         description: 'download the SVG of all sprites'
                     }),
                     arguments: {
+                        FILENAME: {
+                            type: ArgumentType.STRING,
+                            defaultValue: 'vpen'
+                        }
                     }
                 },
                 {
@@ -1395,10 +1389,14 @@ class VPenBlocks {
                     blockType: BlockType.COMMAND,
                     text: formatMessage({
                         id: 'xcxVPen.downloadSpriteDrawing',
-                        default: 'download drawing by the sprite',
+                        default: 'download drawing by the sprite named [FILENAME]',
                         description: 'download SVG of the sprite'
                     }),
                     arguments: {
+                        FILENAME: {
+                            type: ArgumentType.STRING,
+                            defaultValue: 'sprite'
+                        }
                     },
                     filter: [TargetType.SPRITE]
                 }

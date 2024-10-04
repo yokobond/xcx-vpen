@@ -24774,8 +24774,8 @@ var en = {
 	"xcxVPen.mmForStep": "mm for [STEP] steps",
 	"xcxVPen.getStepPerMM": "step/mm",
 	"xcxVPen.setStepPerMM": "set step/mm to [STEP_PER_MM]",
-	"xcxVPen.downloadSpriteDrawing": "download drawings by the sprite",
-	"xcxVPen.downloadAllDrawing": "download all drawings",
+	"xcxVPen.downloadSpriteDrawing": "download drawing by the sprite named [FILENAME]",
+	"xcxVPen.downloadAllDrawing": "download all drawings named [FILENAME]",
 	"xcxVPen.penTypesMenu.trail": "trail",
 	"xcxVPen.penTypesMenu.plotter": "plotter",
 	"xcxVPen.lineShapesMenu.straight": "straight",
@@ -24804,8 +24804,8 @@ var ja = {
 	"xcxVPen.mmForStep": "[STEP]歩の長さ(mm)",
 	"xcxVPen.getStepPerMM": "歩/mm",
 	"xcxVPen.setStepPerMM": "歩/mm を[STEP_PER_MM]にする",
-	"xcxVPen.downloadSpriteDrawing": "このスプライトの描画をダウンロードする",
-	"xcxVPen.downloadAllDrawing": "すべての描画をダウンロードする",
+	"xcxVPen.downloadSpriteDrawing": "このスプライトの描画をファイル[FILENAME]に保存する",
+	"xcxVPen.downloadAllDrawing": "すべての描画をファイル[FILENAME]に保存する",
 	"xcxVPen.penTypesMenu.trail": "トレイル",
 	"xcxVPen.penTypesMenu.plotter": "プロッター",
 	"xcxVPen.lineShapesMenu.straight": "直線",
@@ -24837,8 +24837,8 @@ var translations = {
 	"xcxVPen.mmForStep": "[STEP]ほ の ながさ(mm)",
 	"xcxVPen.getStepPerMM": "ほ/mm",
 	"xcxVPen.setStepPerMM": "ほ/mm を[STEP_PER_MM]に する",
-	"xcxVPen.downloadSpriteDrawing": "この スプライト の びょうが を ダウンロードする",
-	"xcxVPen.downloadAllDrawing": "すべて の びょうが を ダウンロード する",
+	"xcxVPen.downloadSpriteDrawing": "この スプライト の びょうが を ファイル[FILENAME]に ほぞん する",
+	"xcxVPen.downloadAllDrawing": "すべて の びょうが を ファイル[FILENAME]に ほぞん する",
 	"xcxVPen.penTypesMenu.trail": "トレイル",
 	"xcxVPen.penTypesMenu.plotter": "プロッター",
 	"xcxVPen.lineShapesMenu.straight": "ちょくせん",
@@ -33861,23 +33861,18 @@ var VPenBlocks = /*#__PURE__*/function () {
     key: "downloadSpriteDrawing",
     value: function downloadSpriteDrawing(args, util) {
       var target = util.target;
+      var fileName = Cast$2.toString(args.FILENAME);
       var penState = this._penStateFor(target);
       if (!penState || !penState.drawing) {
         return 'no drawing';
       }
       // eslint-disable-next-line no-alert
-      var fileName = prompt(formatMessage({
-        id: 'xcxVPen.fileNameForSprite',
-        default: 'Enter a name for the file:',
-        description: 'prompt for the file name to save the sprite drawing'
-      }), target.sprite.name);
       if (fileName === null || fileName === '') {
-        return 'cancelled';
+        fileName = target.sprite.name;
       }
       var saveSVG = this._createDrawingSVG();
       this._addSpriteDrawingTo(target, saveSVG);
-      this._saveSVGAsFile(saveSVG, fileName);
-      return 'saved';
+      return this._saveSVGAsFile(saveSVG, fileName);
     }
 
     /**
@@ -33892,24 +33887,26 @@ var VPenBlocks = /*#__PURE__*/function () {
     value: function downloadAllDrawing(args, util) {
       var _this3 = this;
       // eslint-disable-next-line no-alert
-      var fileName = prompt(formatMessage({
-        id: 'xcxVPen.fileNameForAll',
-        default: 'Enter a name for the file:',
-        description: 'prompt for the file name to save the all drawing'
-      }), 'vpen');
+      var fileName = Cast$2.toString(args.FILENAME);
       if (fileName === null || fileName === '') {
-        return 'cancelled';
+        fileName = 'vpen';
       }
       var saveSVG = this._createDrawingSVG();
-      util.runtime.targets.filter(function (target) {
+      var saveTargets = util.runtime.targets.filter(function (target) {
         return target.isSprite();
       }).sort(function (a, b) {
         return _this3._getDrawableOrderFor(a) - _this3._getDrawableOrderFor(b);
-      }).forEach(function (target) {
+      });
+      if (saveTargets.length === 0) {
+        return 'no drawing';
+      }
+      saveTargets.forEach(function (target) {
         _this3._addSpriteDrawingTo(target, saveSVG);
       });
-      this._saveSVGAsFile(saveSVG, fileName);
-      return 'saved';
+      if (saveSVG.children().length === 0) {
+        return 'no drawing';
+      }
+      return this._saveSVGAsFile(saveSVG, fileName);
     }
 
     /**
@@ -34161,19 +34158,29 @@ var VPenBlocks = /*#__PURE__*/function () {
           blockType: BlockType$1.COMMAND,
           text: formatMessage({
             id: 'xcxVPen.downloadAllDrawing',
-            default: 'download all drawings',
+            default: 'download all drawings named [FILENAME]',
             description: 'download the SVG of all sprites'
           }),
-          arguments: {}
+          arguments: {
+            FILENAME: {
+              type: ArgumentType$1.STRING,
+              defaultValue: 'vpen'
+            }
+          }
         }, {
           opcode: 'downloadSpriteDrawing',
           blockType: BlockType$1.COMMAND,
           text: formatMessage({
             id: 'xcxVPen.downloadSpriteDrawing',
-            default: 'download drawing by the sprite',
+            default: 'download drawing by the sprite named [FILENAME]',
             description: 'download SVG of the sprite'
           }),
-          arguments: {},
+          arguments: {
+            FILENAME: {
+              type: ArgumentType$1.STRING,
+              defaultValue: 'sprite'
+            }
+          },
           filter: [TargetType$1.SPRITE]
         }],
         menus: {
