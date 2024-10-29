@@ -386,9 +386,9 @@ class VPenBlocks {
         // Close the path if it's a closed line.
         const start = (plots[1][0] === 'L') ? plots[0] : plots[1];
         const lastLine = plots[plots.length - 1]; // L or T
-        const tolerance = 0.5;
-        if (((start[1] - lastLine[1]) ** 2) + ((start[2] - lastLine[2]) ** 2) >
-            tolerance ** 2) {
+        const closingDistance = 8; // pixels distance for closing the path.
+        if (Math.sqrt(((start[1] - lastLine[1]) ** 2) + ((start[2] - lastLine[2]) ** 2)) >
+            closingDistance) {
             return;
         }
         // It's a closed line.

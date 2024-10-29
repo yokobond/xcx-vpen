@@ -33125,8 +33125,8 @@ var VPenBlocks = /*#__PURE__*/function () {
       // Close the path if it's a closed line.
       var start = plots[1][0] === 'L' ? plots[0] : plots[1];
       var lastLine = plots[plots.length - 1]; // L or T
-      var tolerance = 0.5;
-      if (Math.pow(start[1] - lastLine[1], 2) + Math.pow(start[2] - lastLine[2], 2) > Math.pow(tolerance, 2)) {
+      var closingDistance = 8; // pixels distance for closing the path.
+      if (Math.sqrt(Math.pow(start[1] - lastLine[1], 2) + Math.pow(start[2] - lastLine[2], 2)) > closingDistance) {
         return;
       }
       // It's a closed line.
