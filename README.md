@@ -9,7 +9,7 @@ This extension provides SVG based pen features for [Xcratch](https://xcratch.git
 - select line type (straight or curve)
 - change line color, opacity and width
 - stamp costume with effects
-- draw closed line
+- draw closed line by connecting the start and end points
 - fill closed line with color
 - change the order of the pen layers
 - save the drawings as a SVG file
@@ -17,6 +17,17 @@ This extension provides SVG based pen features for [Xcratch](https://xcratch.git
 
 Play [Example Project](https://xcratch.github.io/editor/#https://yokobond.github.io/xcx-vpen/projects/example.sb3) to look at what you can do with "Vector Pen" extension. 
 <iframe src="https://xcratch.github.io/editor/player#https://yokobond.github.io/xcx-vpen/projects/example.sb3" width="540px" height="460px"></iframe>
+
+
+## Example Project
+
+### Drawing icon with Vector Pen
+This project demonstrates how to draw an icon with Vector Pen extension.
+[Example Project](https://xcratch.github.io/editor/#https://yokobond.github.io/xcx-vpen/projects/example.sb3)
+
+### Drawing with Touch Pen
+This project demonstrates how to draw trails with touch pen.
+[Touch Pen Project](https://xcratch.github.io/editor/#https://yokobond.github.io/xcx-vpen/projects/touch-pen.sb3)
 
 
 ## How to Use in Xcratch
