@@ -1108,6 +1108,23 @@ class VPenBlocks {
     }
 
     /**
+     * Remove the last drawing of the sprite.
+     * @param {object} _args - the block arguments.
+     * @param {object} util - utility object provided by the runtime.
+     */
+    eraseLast (_args, util) {
+        const target = util.target;
+        const penState = this._penStateFor(target);
+        if (penState && penState.drawing) {
+            const drawings = penState.drawing.children();
+            if (drawings.length > 0) {
+                drawings[drawings.length - 1].remove();
+                this._updatePenSkinFor(target);
+            }
+        }
+    }
+
+    /**
      * @returns {object} metadata for this extension and its blocks.
      */
     getInfo () {
@@ -1138,6 +1155,17 @@ class VPenBlocks {
                     }),
                     filter: [TargetType.SPRITE]
                 },
+                {
+                    opcode: 'eraseLast',
+                    blockType: BlockType.COMMAND,
+                    text: formatMessage({
+                        id: 'xcxVPen.eraseLast',
+                        default: 'erase last drawing',
+                        description: 'remove the last drawing of the sprite'
+                    }),
+                    filter: [TargetType.SPRITE]
+                },
+                '---',
                 {
                     opcode: 'stamp',
                     blockType: BlockType.COMMAND,

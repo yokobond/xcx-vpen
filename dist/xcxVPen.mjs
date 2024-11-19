@@ -24757,6 +24757,7 @@ var en = {
 	"xcxVPen.name": "Vector Pen",
 	"xcxVPen.clearAll": "erase all drawings",
 	"xcxVPen.clear": "erase drawings of this sprite",
+	"xcxVPen.eraseLast": "erase last drawing",
 	"xcxVPen.penDown": "[PEN_TYPE] pen down",
 	"xcxVPen.plot": "plot",
 	"xcxVPen.setPenOpacity": "set pen opacity to [OPACITY]",
@@ -24787,6 +24788,7 @@ var ja = {
 	"xcxVPen.name": "ベクターペン",
 	"xcxVPen.clearAll": "すべての描画を消す",
 	"xcxVPen.clear": "このスプライトの描画を消す",
+	"xcxVPen.eraseLast": "最後の描画を消す",
 	"xcxVPen.penDown": "[PEN_TYPE]ペンを下ろす",
 	"xcxVPen.plot": "プロットする",
 	"xcxVPen.setPenOpacity": "ペンの不透明度を[OPACITY]にする",
@@ -24820,6 +24822,7 @@ var translations = {
 	"xcxVPen.name": "ベクターペン",
 	"xcxVPen.clearAll": "すべて の びょうが を けす",
 	"xcxVPen.clear": "この スプライト の びょうが を けす",
+	"xcxVPen.eraseLast": "さいご の びょうが を けす",
 	"xcxVPen.penDown": "[PEN_TYPE]ペン を 下ろす",
 	"xcxVPen.plot": "プロット する",
 	"xcxVPen.setPenOpacity": "ペン の ふとうめいど を[OPACITY]に する",
@@ -33910,6 +33913,25 @@ var VPenBlocks = /*#__PURE__*/function () {
     }
 
     /**
+     * Remove the last drawing of the sprite.
+     * @param {object} _args - the block arguments.
+     * @param {object} util - utility object provided by the runtime.
+     */
+  }, {
+    key: "eraseLast",
+    value: function eraseLast(_args, util) {
+      var target = util.target;
+      var penState = this._penStateFor(target);
+      if (penState && penState.drawing) {
+        var drawings = penState.drawing.children();
+        if (drawings.length > 0) {
+          drawings[drawings.length - 1].remove();
+          this._updatePenSkinFor(target);
+        }
+      }
+    }
+
+    /**
      * @returns {object} metadata for this extension and its blocks.
      */
   }, {
@@ -33940,6 +33962,15 @@ var VPenBlocks = /*#__PURE__*/function () {
           }),
           filter: [TargetType$1.SPRITE]
         }, {
+          opcode: 'eraseLast',
+          blockType: BlockType$1.COMMAND,
+          text: formatMessage({
+            id: 'xcxVPen.eraseLast',
+            default: 'erase last drawing',
+            description: 'remove the last drawing of the sprite'
+          }),
+          filter: [TargetType$1.SPRITE]
+        }, '---', {
           opcode: 'stamp',
           blockType: BlockType$1.COMMAND,
           text: formatMessage({
