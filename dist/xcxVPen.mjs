@@ -4,18 +4,18 @@ var img$1 = "data:image/svg+xml,%3c%3fxml version='1.0' encoding='UTF-8' standal
 
 var en$1 = {
 	"xcxVPen.entry.name": "Vector Pen",
-	"xcxVPen.entry.description": "Description of this extension"
+	"xcxVPen.entry.description": "Draw SVG paths like the pen extension"
 };
 var ja$1 = {
-	"xcxVPen.entry.name": "Vector Pen",
-	"xcxVPen.entry.description": "拡張機能の説明"
+	"xcxVPen.entry.name": "ベクター ペン",
+	"xcxVPen.entry.description": "ペン拡張機能のようにSVGパスを描く"
 };
 var translations$1 = {
 	en: en$1,
 	ja: ja$1,
 	"ja-Hira": {
-	"xcxVPen.entry.name": "Vector Pen",
-	"xcxVPen.entry.description": "かくちょうきのうのせつめい"
+	"xcxVPen.entry.name": "ベクター ペン",
+	"xcxVPen.entry.description": "ペン ブロック の ように SVG パス を えがく"
 }
 };
 
@@ -24785,7 +24785,7 @@ var en = {
 	"xcxVPen.fileNameForAll": "Enter a name for the file:"
 };
 var ja = {
-	"xcxVPen.name": "ベクターペン",
+	"xcxVPen.name": "ベクター ペン",
 	"xcxVPen.clearAll": "すべての描画を消す",
 	"xcxVPen.clear": "このスプライトの描画を消す",
 	"xcxVPen.eraseLast": "最後の描画を消す",
@@ -24819,7 +24819,7 @@ var translations = {
 	en: en,
 	ja: ja,
 	"ja-Hira": {
-	"xcxVPen.name": "ベクターペン",
+	"xcxVPen.name": "ベクター ペン",
 	"xcxVPen.clearAll": "すべて の びょうが を けす",
 	"xcxVPen.clear": "この スプライト の びょうが を けす",
 	"xcxVPen.eraseLast": "さいご の びょうが を けす",

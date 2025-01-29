@@ -31,7 +31,7 @@
     "xcxVPen.fileNameForAll": "Enter a name for the file:"
   },
   "ja": {
-    "xcxVPen.name": "ベクターペン",
+    "xcxVPen.name": "ベクター ペン",
     "xcxVPen.clearAll": "すべての描画を消す",
     "xcxVPen.clear": "このスプライトの描画を消す",
     "xcxVPen.eraseLast": "最後の描画を消す",
@@ -62,7 +62,7 @@
     "xcxVPen.fileNameForAll": "ファイル名を入力してください:"
   },
   "ja-Hira": {
-    "xcxVPen.name": "ベクターペン",
+    "xcxVPen.name": "ベクター ペン",
     "xcxVPen.clearAll": "すべて の びょうが を けす",
     "xcxVPen.clear": "この スプライト の びょうが を けす",
     "xcxVPen.eraseLast": "さいご の びょうが を けす",
