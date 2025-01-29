@@ -22,11 +22,12 @@ Play [Example Project](https://xcratch.github.io/editor/#https://yokobond.github
 ## Example Project
 
 ### Drawing icon with Vector Pen
-This project demonstrates how to draw an icon with Vector Pen extension.
+This project demonstrates how to draw lines and fill colors with Vector Pen extension.
 [Example Project](https://xcratch.github.io/editor/#https://yokobond.github.io/xcx-vpen/projects/example.sb3)
 
 ### Drawing with Touch Pen
 This project demonstrates how to draw trails with touch pen.
+Press the green flag to start drawing. Drag your mouse pointer on the screen to draw lines. Click the eraser sprite to clear the screen.
 [Touch Pen Project](https://xcratch.github.io/editor/#https://yokobond.github.io/xcx-vpen/projects/touch-pen.sb3)
 
 
