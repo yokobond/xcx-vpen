@@ -34,6 +34,7 @@ const entry = {
             id: 'xcxVPen.entry.description'
         });
     },
+    tags: ['image', 'vector', 'pen', 'svg'],
     featured: true,
     disabled: false,
     bluetoothRequired: false,
