@@ -29,7 +29,7 @@ const entry = {
     insetIconURL: insetIconURL,
     get description () {
         return formatMessage({
-            defaultMessage: 'an extension for Xcratch',
+            defaultMessage: 'Draw SVG paths like the pen extension',
             description: 'Description for this extension',
             id: 'xcxVPen.entry.description'
         });
