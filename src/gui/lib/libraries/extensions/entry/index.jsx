@@ -5,6 +5,9 @@
 import iconURL from './entry-icon.png';
 import insetIconURL from './inset-icon.svg';
 import translations from './translations.json';
+import {version as packageVersion} from '../../../../../../package.json';
+
+const version = `v${packageVersion}`;
 
 /**
  * Formatter to translate the messages in this extension.
@@ -18,21 +21,19 @@ const entry = {
     get name () {
         return formatMessage({
             id: 'xcxVPen.entry.name',
-            defaultMessage: 'Vector Pen',
-            description: 'name of the extension'
+            defaultMessage: 'Vector Pen'
         });
     },
     extensionId: 'xcxVPen',
     extensionURL: 'https://yokobond.github.io/xcx-vpen/dist/xcxVPen.mjs',
-    collaborator: 'yokobond',
+    collaborator: 'Koji Yokokawa',
     iconURL: iconURL,
     insetIconURL: insetIconURL,
     get description () {
-        return formatMessage({
+        return `${formatMessage({
             defaultMessage: 'Draw SVG paths like the pen extension',
-            description: 'Description for this extension',
             id: 'xcxVPen.entry.description'
-        });
+        })} (${version})`;
     },
     tags: ['image', 'vector', 'pen', 'svg'],
     featured: true,

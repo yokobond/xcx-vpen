@@ -6,6 +6,7 @@
   "scripts": {
     "setup-dev": "node ./scripts/setup-dev.mjs",
     "build": "rollup -c ./scripts/rollup.config.mjs",
+    "version": "node ./scripts/version-build.mjs && git add dist",
     "watch": "rollup -c ./scripts/rollup.config.mjs --watch",
     "test": "mocha"
   },
