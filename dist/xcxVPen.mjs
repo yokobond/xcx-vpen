@@ -4,25 +4,28 @@ var img$1 = "data:image/svg+xml,%3c%3fxml version='1.0' encoding='UTF-8' standal
 
 var en$1 = {
 	"xcxVPen.entry.name": "Vector Pen",
-	"xcxVPen.entry.description": "Draw SVG paths like the pen extension"
+	"xcxVPen.entry.description": "Pen to draw SVG paths"
 };
 var ja$1 = {
 	"xcxVPen.entry.name": "ベクター ペン",
-	"xcxVPen.entry.description": "ペン拡張機能のようにSVGパスを描く"
+	"xcxVPen.entry.description": "SVGパスを描くペン"
 };
 var translations$1 = {
 	en: en$1,
 	ja: ja$1,
 	"ja-Hira": {
 	"xcxVPen.entry.name": "ベクター ペン",
-	"xcxVPen.entry.description": "ペン ブロック の ように SVG パス を えがく"
+	"xcxVPen.entry.description": "SVG パス を えがく ペン"
 }
 };
+
+var version$1 = "0.0.0";
 
 /**
  * This is an extension for Xcratch.
  */
 
+var version = "v".concat(version$1);
 
 /**
  * Formatter to translate the messages in this extension.
@@ -37,21 +40,19 @@ var entry = {
   get name() {
     return formatMessage$1({
       id: 'xcxVPen.entry.name',
-      defaultMessage: 'Vector Pen',
-      description: 'name of the extension'
+      defaultMessage: 'Vector Pen'
     });
   },
   extensionId: 'xcxVPen',
   extensionURL: 'https://yokobond.github.io/xcx-vpen/dist/xcxVPen.mjs',
-  collaborator: 'yokobond',
+  collaborator: 'Koji Yokokawa',
   iconURL: img$2,
   insetIconURL: img$1,
   get description() {
-    return formatMessage$1({
+    return "".concat(formatMessage$1({
       defaultMessage: 'Draw SVG paths like the pen extension',
-      description: 'Description for this extension',
       id: 'xcxVPen.entry.description'
-    });
+    }), " (").concat(version, ")");
   },
   tags: ['image', 'vector', 'pen', 'svg'],
   featured: true,

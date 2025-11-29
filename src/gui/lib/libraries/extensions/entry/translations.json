@@ -1,14 +1,14 @@
 {
   "en": {
     "xcxVPen.entry.name": "Vector Pen",
-    "xcxVPen.entry.description": "Draw SVG paths like the pen extension"
+    "xcxVPen.entry.description": "Pen to draw SVG paths"
   },
   "ja": {
     "xcxVPen.entry.name": "ベクター ペン",
-    "xcxVPen.entry.description": "ペン拡張機能のようにSVGパスを描く"
+    "xcxVPen.entry.description": "SVGパスを描くペン"
   },
   "ja-Hira": {
     "xcxVPen.entry.name": "ベクター ペン",
-    "xcxVPen.entry.description": "ペン ブロック の ように SVG パス を えがく"
+    "xcxVPen.entry.description": "SVG パス を えがく ペン"
   }
 }
