@@ -2,6 +2,7 @@
   "name": "xcx-vpen",
   "version": "0.0.0",
   "description": " SVG vector pen extension for Xcratch",
+  "extensionId": "xcxVPen",
   "scripts": {
     "setup-dev": "node ./scripts/setup-dev.mjs",
     "build": "rollup -c ./scripts/rollup.config.mjs",
