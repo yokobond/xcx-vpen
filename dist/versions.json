@@ -1,0 +1,11 @@
+{
+  "extensionId": "xcxVPen",
+  "versions": [
+    {
+      "version": "0.1.0",
+      "buildDate": "2025-11-29T09:00:54.305Z",
+      "module": "0.1.0/xcxVPen.mjs"
+    }
+  ],
+  "latest": "0.1.0"
+}
