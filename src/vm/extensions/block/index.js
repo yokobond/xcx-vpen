@@ -872,43 +872,82 @@ class VPenBlocks {
      */
     stamp (args, util) {
         const target = util.target;
-        const drawable = target.drawableID;
-        const drawableData = this.runtime.renderer.extractDrawableScreenSpace(drawable);
-        // Get the dataURL of the drawable
+        const renderer = this.runtime.renderer;
+
+        // Create a temporary drawable to capture the high-res image
+        const tempDrawableID = renderer.createDrawable(StageLayering.SPRITE_LAYER);
+        const costume = target.sprite.costumes[target.currentCostume];
+
+        renderer.updateDrawableSkinId(tempDrawableID, costume.skinId);
+
+        // Apply all effects
+        for (const effectName in target.effects) {
+            if (Object.prototype.hasOwnProperty.call(target.effects, effectName)) {
+                renderer.updateDrawableEffect(tempDrawableID, effectName, target.effects[effectName]);
+            }
+        }
+
+        // Calculate rendered direction and scale (at 100% size * resolutionScale)
+        const resolutionScale = 2;
+        let finalDirection = target.direction;
+        let finalScale = [100 * resolutionScale, 100 * resolutionScale];
+        if (target.rotationStyle === RenderedTarget.ROTATION_STYLE_NONE) {
+            finalDirection = 90;
+        } else if (target.rotationStyle === RenderedTarget.ROTATION_STYLE_LEFT_RIGHT) {
+            finalDirection = 90;
+            const scaleFlip = (target.direction < 0) ? -1 : 1;
+            finalScale = [scaleFlip * 100 * resolutionScale, 100 * resolutionScale];
+        }
+
+        // Update temporary drawable properties
+        renderer.updateDrawableDirectionScale(tempDrawableID, finalDirection, finalScale);
+        renderer.updateDrawableVisible(tempDrawableID, true);
+        // Position at (0, 0) to avoid edge clipping issues during extraction
+        renderer.updateDrawablePosition(tempDrawableID, [0, 0]);
+
+        const drawableData = renderer.extractDrawableScreenSpace(tempDrawableID);
+
+        // Clean up
+        renderer.destroyDrawable(tempDrawableID, StageLayering.SPRITE_LAYER);
+
+        // Create SVG Image
         const canvas = document.createElement('canvas');
         canvas.width = drawableData.imageData.width;
         canvas.height = drawableData.imageData.height;
         const ctx = canvas.getContext('2d');
         ctx.putImageData(drawableData.imageData, 0, 0);
         const drawableURL = canvas.toDataURL();
-        // Stamp the drawable onto the pen layer
+
         const penState = this._getPenState(target);
         const drawing = penState.drawing;
+        const stamp = drawing.image(drawableURL);
 
-        // Get the actual stage size from the renderer.
-        const canvasWidth = this.runtime.renderer.canvas.clientWidth;
-        const canvasHeight = this.runtime.renderer.canvas.clientHeight;
+        // Calculate dimensions
+        const canvasWidth = renderer.canvas.clientWidth;
+        const canvasHeight = renderer.canvas.clientHeight;
         const stageResolution = [
             canvasWidth / this.stageWidth,
             canvasHeight / this.stageHeight
         ];
 
-        // Get the costume and its resolution.
-        const costume = target.sprite.costumes[target.currentCostume];
-        const costumeResolution = costume.bitmapResolution || 1; // Default to 1 if resolution isn't specified
+        // Size in Stage Units (at 100% scale)
+        const naturalWidth = (drawableData.width / stageResolution[0]) / resolutionScale;
+        const naturalHeight = (drawableData.height / stageResolution[1]) / resolutionScale;
 
-        // Stamp the drawable onto the pen layer
-        const stamp = drawing.image(drawableURL);
+        // Final size based on target size
+        const finalWidth = naturalWidth * (target.size / 100);
+        const finalHeight = naturalHeight * (target.size / 100);
 
-        // Adjust position and size for stage size change
-        const adjustedX = drawableData.x / stageResolution[0];
-        const adjustedY = drawableData.y / stageResolution[1];
-        const adjustedWidth = (drawableData.width / stageResolution[0]) / costumeResolution;
-        const adjustedHeight = (drawableData.height / stageResolution[1]) / costumeResolution;
+        stamp.size(finalWidth, finalHeight);
 
-        stamp.move(adjustedX, adjustedY);
-        stamp.size(adjustedWidth, adjustedHeight);
+        // Position
+        const [cx, cy] = this._mapToSVGViewBox(target.x, target.y);
+        // Center the image
+        stamp.move(cx - (finalWidth / 2), cy - (finalHeight / 2));
+        
+        // Opacity
         stamp.opacity((100 - target.effects.ghost) / 100);
+
         this._updatePenSkinFor(target);
     }
 
