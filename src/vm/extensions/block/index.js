@@ -934,16 +934,29 @@ class VPenBlocks {
         const naturalWidth = (drawableData.width / stageResolution[0]) / resolutionScale;
         const naturalHeight = (drawableData.height / stageResolution[1]) / resolutionScale;
 
+        // Calculate pivot point (rotation center) relative to the image top-left
+        // drawableData.x/y is the top-left corner in canvas pixels
+        // (canvasWidth/2, canvasHeight/2) is the center of the canvas, where we placed the drawable's rotation center
+        const pivotX = (canvasWidth / 2) - drawableData.x;
+        const pivotY = (canvasHeight / 2) - drawableData.y;
+
+        // Convert pivot to Stage Units (at 100% scale)
+        const naturalPivotX = (pivotX / stageResolution[0]) / resolutionScale;
+        const naturalPivotY = (pivotY / stageResolution[1]) / resolutionScale;
+
         // Final size based on target size
         const finalWidth = naturalWidth * (target.size / 100);
         const finalHeight = naturalHeight * (target.size / 100);
+        
+        const finalPivotX = naturalPivotX * (target.size / 100);
+        const finalPivotY = naturalPivotY * (target.size / 100);
 
         stamp.size(finalWidth, finalHeight);
 
         // Position
         const [cx, cy] = this._mapToSVGViewBox(target.x, target.y);
-        // Center the image
-        stamp.move(cx - (finalWidth / 2), cy - (finalHeight / 2));
+        // Center the image using the pivot point
+        stamp.move(cx - finalPivotX, cy - finalPivotY);
         
         // Opacity
         stamp.opacity((100 - target.effects.ghost) / 100);
