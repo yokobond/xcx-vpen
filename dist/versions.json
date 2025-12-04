@@ -2,6 +2,11 @@
   "extensionId": "xcxVPen",
   "versions": [
     {
+      "version": "0.2.2",
+      "buildDate": "2025-12-04T01:50:09.882Z",
+      "module": "0.2.2/xcxVPen.mjs"
+    },
+    {
       "version": "0.2.1",
       "buildDate": "2025-12-02T08:19:15.989Z",
       "module": "0.2.1/xcxVPen.mjs"
@@ -17,5 +22,5 @@
       "module": "0.1.0/xcxVPen.mjs"
     }
   ],
-  "latest": "0.2.1"
+  "latest": "0.2.2"
 }
