@@ -180,7 +180,9 @@ class VPenBlocks {
                 fillColor3b: {r: 0, g: 0, b: 0}, // RGB 0-255,
                 fillOpacity: 0 // 0.0-1.0
             },
-            referencePoint: null
+            referencePoint: null,
+            hasThinLines: false,
+            _pendingSkinUpdate: null
         };
     }
 
@@ -251,9 +253,9 @@ class VPenBlocks {
     _createDrawingSVG () {
         const stageWidth = this.stageWidth;
         const stageHeight = this.stageHeight;
-        const dummy = document.implementation.createHTMLDocument();
+        const container = document.createElement('div');
         return SVG()
-            .addTo(dummy.body)
+            .addTo(container)
             .size(`${stageWidth}`,
                 `${stageHeight}`)
             .viewbox(0, 0, stageWidth, stageHeight);
@@ -328,9 +330,11 @@ class VPenBlocks {
         if (!penState || !penState.drawing) {
             return;
         }
-        penState.drawing.remove();
-        penState.drawing = null;
-        if (penState.penPath) {
+        penState.drawing.clear();
+        const wasDrawing = !!penState.penPath;
+        penState.penPath = null;
+        penState.hasThinLines = false;
+        if (wasDrawing) {
             this._startPenPath(target);
         }
         this._updatePenSkinFor(target);
@@ -341,16 +345,22 @@ class VPenBlocks {
      * @param {Target} target - the target to update the pen skin for.
      */
     _updatePenSkinFor (target) {
-        const penSkinId = this._getSkinIDFor(target);
-        if (penSkinId < 0) {
-            throw new Error('No SVG Skin ID');
-        }
         const penState = this._penStateFor(target);
-        const svg = penState.drawing.root();
-        this.runtime.renderer.updateSVGSkin(
-            penSkinId,
-            this.convertSVGForPenLayer(svg.svg()));
-        this.runtime.requestRedraw();
+        if (penState._pendingSkinUpdate) {
+            return;
+        }
+        penState._pendingSkinUpdate = requestAnimationFrame(() => {
+            penState._pendingSkinUpdate = null;
+            const penSkinId = this._getSkinIDFor(target);
+            if (penSkinId < 0) {
+                throw new Error('No SVG Skin ID');
+            }
+            const svg = penState.drawing.root();
+            this.runtime.renderer.updateSVGSkin(
+                penSkinId,
+                this.convertSVGForPenLayer(svg.svg(), penState));
+            this.runtime.requestRedraw();
+        });
     }
 
     /**
@@ -443,6 +453,11 @@ class VPenBlocks {
                 linecap: 'round',
                 linejoin: 'round'
             });
+        
+        if (penState.penAttributes.diameter < VPenBlocks.DISPLAY_STROKE_WIDTH_MIN) {
+            penState.hasThinLines = true;
+        }
+        
         penState.penPath = newPath;
     }
 
@@ -494,9 +509,13 @@ class VPenBlocks {
     /**
      * Get the SVG for the pen layer.
      * @param {string} svg - the SVG string.
+     * @param {object} [penState] - the pen state.
      * @returns {string} - the SVG string for the pen layer.
      */
-    convertSVGForPenLayer (svg) {
+    convertSVGForPenLayer (svg, penState) {
+        if (penState && !penState.hasThinLines) {
+            return svg;
+        }
         // Ensure that all strokes have a minimum width for visibility.
         const thinStrokeWidth = VPenBlocks.DISPLAY_STROKE_WIDTH_MIN;
         return svg.replace(
