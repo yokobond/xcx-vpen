@@ -19,7 +19,7 @@ var translations$1 = {
 }
 };
 
-var version$1 = "0.2.4";
+var version$1 = "0.2.3";
 
 /**
  * This is an extension for Xcratch.
@@ -33140,7 +33140,6 @@ var VPenBlocks = /*#__PURE__*/function () {
         penState.penType = VPenBlocks.PEN_TYPES.PLOTTER;
         this._startPenPath(target);
         this._updatePenSkinFor(target);
-        target.removeListener(RenderedTarget$1.EVENT_TARGET_MOVED, this.onTargetMoved);
         target.addListener(RenderedTarget$1.EVENT_TARGET_MOVED, this.onTargetMoved);
       }
       // Change the reference point to the drawing position.
@@ -33169,7 +33168,6 @@ var VPenBlocks = /*#__PURE__*/function () {
         this._startPenPath(target);
       }
       this._updatePenSkinFor(target);
-      target.removeListener(RenderedTarget$1.EVENT_TARGET_MOVED, this.onTargetMoved);
       target.addListener(RenderedTarget$1.EVENT_TARGET_MOVED, this.onTargetMoved);
     }
 
