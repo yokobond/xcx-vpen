@@ -330,7 +330,8 @@ class VPenBlocks {
         if (!penState || !penState.drawing) {
             return;
         }
-        penState.drawing.clear();
+        penState.drawing.remove();
+        penState.drawing = this._createDrawingSVG();
         const wasDrawing = !!penState.penPath;
         penState.penPath = null;
         penState.hasThinLines = false;
