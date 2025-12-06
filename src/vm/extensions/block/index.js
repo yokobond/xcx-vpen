@@ -182,7 +182,8 @@ class VPenBlocks {
             },
             referencePoint: null,
             hasThinLines: false,
-            _pendingSkinUpdate: null
+            _pendingSkinUpdate: null,
+            _listenerRegistered: false
         };
     }
 
@@ -677,7 +678,10 @@ class VPenBlocks {
             penState.penType = VPenBlocks.PEN_TYPES.PLOTTER;
             this._startPenPath(target);
             this._updatePenSkinFor(target);
-            target.addListener(RenderedTarget.EVENT_TARGET_MOVED, this.onTargetMoved);
+            if (!penState._listenerRegistered) {
+                target.addListener(RenderedTarget.EVENT_TARGET_MOVED, this.onTargetMoved);
+                penState._listenerRegistered = true;
+            }
         }
         // Change the reference point to the drawing position.
         penState.referencePoint = null;
@@ -703,7 +707,10 @@ class VPenBlocks {
             this._startPenPath(target);
         }
         this._updatePenSkinFor(target);
-        target.addListener(RenderedTarget.EVENT_TARGET_MOVED, this.onTargetMoved);
+        if (!penState._listenerRegistered) {
+            target.addListener(RenderedTarget.EVENT_TARGET_MOVED, this.onTargetMoved);
+            penState._listenerRegistered = true;
+        }
     }
 
     /**
@@ -720,7 +727,10 @@ class VPenBlocks {
         }
         this._finishPen(penState);
         this._updatePenSkinFor(target);
-        target.removeListener(RenderedTarget.EVENT_TARGET_MOVED, this.onTargetMoved);
+        if (penState._listenerRegistered) {
+            target.removeListener(RenderedTarget.EVENT_TARGET_MOVED, this.onTargetMoved);
+            penState._listenerRegistered = false;
+        }
     }
 
     /**
