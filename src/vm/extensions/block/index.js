@@ -386,12 +386,11 @@ class VPenBlocks {
         const penPath = penState.penPath;
         penState.penPath = null;
         const plots = penPath.array();
-        if (plots.length === 1) {
-            // If the pen line only has one instruction (MoveTo), it hasn't been drawn yet.
-            penPath.remove();
-            return;
-        }
-        if (plots.length === 2) {
+        if (plots.length < 3) {
+            // If the pen line has fewer than 3 instructions, it hasn't been drawn properly.
+            if (plots.length <= 1) {
+                penPath.remove();
+            }
             return;
         }
         // Close the path if it's a closed line.
