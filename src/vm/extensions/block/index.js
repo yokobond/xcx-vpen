@@ -185,7 +185,8 @@ class VPenBlocks {
             referencePoint: null,
             hasThinLines: false,
             _pendingSkinUpdate: null,
-            _listenerRegistered: false
+            _listenerRegistered: false,
+            isVisible: true
         };
     }
 
@@ -280,6 +281,7 @@ class VPenBlocks {
                 .createSVGSkin(this.convertSVGForPenLayer(drawing.svg()));
             penState.drawableID = this.runtime.renderer.createDrawable(StageLayering.PEN_LAYER);
             renderer.updateDrawableSkinId(penState.drawableID, penState.skinID);
+            renderer.updateDrawableVisible(penState.drawableID, penState.isVisible);
         }
         return penState.skinID;
     }
@@ -1091,6 +1093,57 @@ class VPenBlocks {
     }
 
     /**
+     * Show the drawing of this sprite.
+     * @param {object} _args - the block arguments.
+     * @param {object} util - utility object provided by the runtime.
+     */
+    showDrawing (_args, util) {
+        const target = util.target;
+        const penState = this._getPenState(target);
+        if (penState.isVisible) {
+            return; // Already visible
+        }
+        penState.isVisible = true;
+        if (penState.drawableID >= 0) {
+            this.runtime.renderer.updateDrawableVisible(penState.drawableID, true);
+            this.runtime.requestRedraw();
+        }
+    }
+
+    /**
+     * Hide the drawing of this sprite.
+     * @param {object} _args - the block arguments.
+     * @param {object} util - utility object provided by the runtime.
+     */
+    hideDrawing (_args, util) {
+        const target = util.target;
+        const penState = this._getPenState(target);
+        if (!penState.isVisible) {
+            return; // Already hidden
+        }
+        penState.isVisible = false;
+        if (penState.drawableID >= 0) {
+            this.runtime.renderer.updateDrawableVisible(penState.drawableID, false);
+            this.runtime.requestRedraw();
+        }
+    }
+
+    /**
+     * Returns whether the drawing of this sprite is visible.
+     * @param {object} _args - the block arguments.
+     * @param {object} util - utility object provided by the runtime.
+     * @returns {boolean} - true if the drawing is visible.
+     */
+    isDrawingShown (_args, util) {
+        const target = util.target;
+        const penState = this._penStateFor(target);
+        if (!penState) {
+            return true; // Default is visible
+        }
+        return penState.isVisible;
+    }
+
+    /**
      * Clears the pen layer's contents.
      */
     clearAll () {
@@ -1162,11 +1215,18 @@ class VPenBlocks {
      * Add the sprite drawing group to the SVG if the sprite has a drawing.
      * @param {Target} target - the target to add the sprite drawing for.
      * @param {Container} svgContainer - the SVG container to add the sprite drawing to.
+     * @param {object} [options] - options for adding the drawing.
+     * @param {boolean} [options.includeHidden=false] - if true, include hidden drawings with visibility attribute.
      * @returns {Container?} - a new group for the sprite drawing or null.
      */
-    _addSpriteDrawingTo (target, svgContainer) {
+    _addSpriteDrawingTo (target, svgContainer, options = {}) {
+        const {includeHidden = false} = options;
         const penState = this._penStateFor(target);
         if (!penState || !penState.drawing) {
+            return null;
+        }
+        // Skip hidden drawings unless includeHidden is true
+        if (!penState.isVisible && !includeHidden) {
             return null;
         }
         const drawings = penState.drawing.children();
@@ -1175,6 +1235,9 @@ class VPenBlocks {
         }
         const spriteGroup = svgContainer.group();
         spriteGroup.id(target.sprite.name);
+        if (!penState.isVisible) {
+            spriteGroup.attr('style', 'display:none');
+        }
         drawings.forEach(child => {
             spriteGroup.add(child.clone());
         });
@@ -1200,7 +1263,8 @@ class VPenBlocks {
             fileName = target.sprite.name;
         }
         const saveSVG = this._createDrawingSVG();
-        this._addSpriteDrawingTo(target, saveSVG);
+        const includeHidden = format !== 'pdf';
+        this._addSpriteDrawingTo(target, saveSVG, {includeHidden});
         
         if (format === 'pdf') {
             return this._savePDFAsFile(saveSVG, fileName);
@@ -1246,6 +1310,7 @@ class VPenBlocks {
             fileName = 'vpen';
         }
         const saveSVG = this._createDrawingSVG();
+        const includeHidden = format !== 'pdf';
         const saveTargets = util.runtime.targets
             .filter(target => target.isSprite())
             .sort((a, b) => this._getDrawableOrderFor(a) - this._getDrawableOrderFor(b));
@@ -1253,7 +1318,7 @@ class VPenBlocks {
             return 'no drawing';
         }
         saveTargets.forEach(target => {
-            this._addSpriteDrawingTo(target, saveSVG);
+            this._addSpriteDrawingTo(target, saveSVG, {includeHidden});
         });
         if (saveSVG.children().length === 0) {
             return 'no drawing';
@@ -1527,6 +1592,36 @@ class VPenBlocks {
                             defaultValue: 1
                         }
                     },
+                    filter: [TargetType.SPRITE]
+                },
+                {
+                    opcode: 'showDrawing',
+                    blockType: BlockType.COMMAND,
+                    text: formatMessage({
+                        id: 'xcxVPen.showDrawing',
+                        default: 'show drawing',
+                        description: 'show the drawing of this sprite'
+                    }),
+                    filter: [TargetType.SPRITE]
+                },
+                {
+                    opcode: 'hideDrawing',
+                    blockType: BlockType.COMMAND,
+                    text: formatMessage({
+                        id: 'xcxVPen.hideDrawing',
+                        default: 'hide drawing',
+                        description: 'hide the drawing of this sprite'
+                    }),
+                    filter: [TargetType.SPRITE]
+                },
+                {
+                    opcode: 'isDrawingShown',
+                    blockType: BlockType.BOOLEAN,
+                    text: formatMessage({
+                        id: 'xcxVPen.isDrawingShown',
+                        default: 'drawing shown?',
+                        description: 'is the drawing of this sprite visible?'
+                    }),
                     filter: [TargetType.SPRITE]
                 },
                 '---',
