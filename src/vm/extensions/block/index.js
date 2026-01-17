@@ -1389,36 +1389,6 @@ class VPenBlocks {
             showStatusButton: false,
             blocks: [
                 {
-                    opcode: 'clearAll',
-                    blockType: BlockType.COMMAND,
-                    text: formatMessage({
-                        id: 'xcxVPen.clearAll',
-                        default: 'erase all drawings',
-                        description: 'erase all pen trails and stamps'
-                    })
-                },
-                {
-                    opcode: 'clear',
-                    blockType: BlockType.COMMAND,
-                    text: formatMessage({
-                        id: 'xcxVPen.clear',
-                        default: 'erase drawings of this sprite',
-                        description: 'clear the pen trails of the sprite'
-                    }),
-                    filter: [TargetType.SPRITE]
-                },
-                {
-                    opcode: 'eraseLast',
-                    blockType: BlockType.COMMAND,
-                    text: formatMessage({
-                        id: 'xcxVPen.eraseLast',
-                        default: 'erase last drawing',
-                        description: 'remove the last drawing of the sprite'
-                    }),
-                    filter: [TargetType.SPRITE]
-                },
-                '---',
-                {
                     opcode: 'stamp',
                     blockType: BlockType.COMMAND,
                     text: formatMessage({
@@ -1464,6 +1434,7 @@ class VPenBlocks {
                     }),
                     filter: [TargetType.SPRITE]
                 },
+                '---',
                 {
                     opcode: 'setPenColorToColor',
                     blockType: BlockType.COMMAND,
@@ -1558,6 +1529,7 @@ class VPenBlocks {
                     },
                     filter: [TargetType.SPRITE]
                 },
+                '---',
                 {
                     opcode: 'changeLayerTo',
                     blockType: BlockType.COMMAND,
@@ -1594,6 +1566,7 @@ class VPenBlocks {
                     },
                     filter: [TargetType.SPRITE]
                 },
+                '---',
                 {
                     opcode: 'showDrawing',
                     blockType: BlockType.COMMAND,
@@ -1621,6 +1594,36 @@ class VPenBlocks {
                         id: 'xcxVPen.isDrawingShown',
                         default: 'drawing shown?',
                         description: 'is the drawing of this sprite visible?'
+                    }),
+                    filter: [TargetType.SPRITE]
+                },
+                '---',
+                {
+                    opcode: 'clearAll',
+                    blockType: BlockType.COMMAND,
+                    text: formatMessage({
+                        id: 'xcxVPen.clearAll',
+                        default: 'erase all drawings',
+                        description: 'erase all pen trails and stamps'
+                    })
+                },
+                {
+                    opcode: 'clear',
+                    blockType: BlockType.COMMAND,
+                    text: formatMessage({
+                        id: 'xcxVPen.clear',
+                        default: 'erase drawings of this sprite',
+                        description: 'clear the pen trails of the sprite'
+                    }),
+                    filter: [TargetType.SPRITE]
+                },
+                {
+                    opcode: 'eraseLast',
+                    blockType: BlockType.COMMAND,
+                    text: formatMessage({
+                        id: 'xcxVPen.eraseLast',
+                        default: 'erase last drawing',
+                        description: 'remove the last drawing of the sprite'
                     }),
                     filter: [TargetType.SPRITE]
                 },
@@ -1679,6 +1682,7 @@ class VPenBlocks {
                         }
                     }
                 },
+                '---',
                 {
                     opcode: 'downloadAllDrawing',
                     blockType: BlockType.COMMAND,
