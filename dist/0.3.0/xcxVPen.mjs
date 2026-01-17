@@ -26875,10 +26875,10 @@ var en = {
 	"xcxVPen.mmForStep": "mm for [STEP] steps",
 	"xcxVPen.getStepPerMM": "step/mm",
 	"xcxVPen.setStepPerMM": "set step/mm to [STEP_PER_MM]",
-	"xcxVPen.downloadSpriteDrawing": "download drawing by the sprite named [FILENAME]",
-	"xcxVPen.downloadAllDrawing": "download all drawings named [FILENAME]",
-	"xcxVPen.downloadSpriteDrawingAsPDF": "download drawing by the sprite as PDF named [FILENAME]",
-	"xcxVPen.downloadAllDrawingAsPDF": "download all drawings as PDF named [FILENAME]",
+	"xcxVPen.downloadSpriteDrawing": "download drawing by the sprite as [FORMAT] named [FILENAME]",
+	"xcxVPen.downloadAllDrawing": "download all drawings as [FORMAT] named [FILENAME]",
+	"xcxVPen.fileFormatMenu.svg": "SVG",
+	"xcxVPen.fileFormatMenu.pdf": "PDF",
 	"xcxVPen.penTypesMenu.trail": "trail",
 	"xcxVPen.penTypesMenu.plotter": "plotter",
 	"xcxVPen.lineShapesMenu.straight": "straight",
@@ -26908,10 +26908,10 @@ var ja = {
 	"xcxVPen.mmForStep": "[STEP]歩の長さ(mm)",
 	"xcxVPen.getStepPerMM": "歩/mm",
 	"xcxVPen.setStepPerMM": "歩/mm を[STEP_PER_MM]にする",
-	"xcxVPen.downloadSpriteDrawing": "このスプライトの描画をファイル[FILENAME]に保存する",
-	"xcxVPen.downloadAllDrawing": "すべての描画をファイル[FILENAME]に保存する",
-	"xcxVPen.downloadSpriteDrawingAsPDF": "このスプライトの描画をPDFファイル[FILENAME]に保存する",
-	"xcxVPen.downloadAllDrawingAsPDF": "すべての描画をPDFファイル[FILENAME]に保存する",
+	"xcxVPen.downloadSpriteDrawing": "このスプライトの描画を[FORMAT]ファイル[FILENAME]に保存する",
+	"xcxVPen.downloadAllDrawing": "すべての描画を[FORMAT]ファイル[FILENAME]に保存する",
+	"xcxVPen.fileFormatMenu.svg": "SVG",
+	"xcxVPen.fileFormatMenu.pdf": "PDF",
 	"xcxVPen.penTypesMenu.trail": "トレイル",
 	"xcxVPen.penTypesMenu.plotter": "プロッター",
 	"xcxVPen.lineShapesMenu.straight": "直線",
@@ -26944,10 +26944,10 @@ var translations = {
 	"xcxVPen.mmForStep": "[STEP]ほ の ながさ(mm)",
 	"xcxVPen.getStepPerMM": "ほ/mm",
 	"xcxVPen.setStepPerMM": "ほ/mm を[STEP_PER_MM]に する",
-	"xcxVPen.downloadSpriteDrawing": "この スプライト の びょうが を ファイル[FILENAME]に ほぞん する",
-	"xcxVPen.downloadAllDrawing": "すべて の びょうが を ファイル[FILENAME]に ほぞん する",
-	"xcxVPen.downloadSpriteDrawingAsPDF": "この スプライト の びょうが を PDFファイル[FILENAME]に ほぞん する",
-	"xcxVPen.downloadAllDrawingAsPDF": "すべて の びょうが を PDFファイル[FILENAME]に ほぞん する",
+	"xcxVPen.downloadSpriteDrawing": "この スプライト の びょうが を [FORMAT]ファイル[FILENAME]に ほぞん する",
+	"xcxVPen.downloadAllDrawing": "すべて の びょうが を [FORMAT]ファイル[FILENAME]に ほぞん する",
+	"xcxVPen.fileFormatMenu.svg": "SVG",
+	"xcxVPen.fileFormatMenu.pdf": "PDF",
 	"xcxVPen.penTypesMenu.trail": "トレイル",
 	"xcxVPen.penTypesMenu.plotter": "プロッター",
 	"xcxVPen.lineShapesMenu.straight": "ちょくせん",
@@ -46894,16 +46894,17 @@ var VPenBlocks = /*#__PURE__*/function () {
     }
 
     /**
-     * Save the sprite drawing as an SVG file.
+     * Save the sprite drawing as an SVG or PDF file.
      * @param {object} args - the block arguments.
      * @param {object} util - utility object provided by the runtime.
-     * @returns {string} - the result of saving the sprite drawing.
+     * @returns {string|Promise<string>} - the result of saving the sprite drawing.
      */
   }, {
     key: "downloadSpriteDrawing",
     value: function downloadSpriteDrawing(args, util) {
       var target = util.target;
       var fileName = Cast$2.toString(args.FILENAME);
+      var format = args.FORMAT || 'svg';
       var penState = this._penStateFor(target);
       if (!penState || !penState.drawing) {
         return 'no drawing';
@@ -46914,6 +46915,9 @@ var VPenBlocks = /*#__PURE__*/function () {
       }
       var saveSVG = this._createDrawingSVG();
       this._addSpriteDrawingTo(target, saveSVG);
+      if (format === 'pdf') {
+        return this._savePDFAsFile(saveSVG, fileName);
+      }
       return this._saveSVGAsFile(saveSVG, fileName);
     }
 
@@ -46942,11 +46946,12 @@ var VPenBlocks = /*#__PURE__*/function () {
     }
 
     /**
-     * Save the SVG drawing.
+     * Save all drawings as an SVG or PDF file.
      * @param {object} args - the block arguments.
-     * @param {string} args.NAME - the name of the file to save.
+     * @param {string} args.FILENAME - the name of the file to save.
+     * @param {string} args.FORMAT - the format to save (svg or pdf).
      * @param {object} util - utility object provided by the runtime.
-     * @returns {string} - the result of saving the SVG drawing.
+     * @returns {string|Promise<string>} - the result of saving the drawing.
      */
   }, {
     key: "downloadAllDrawing",
@@ -46954,6 +46959,7 @@ var VPenBlocks = /*#__PURE__*/function () {
       var _this4 = this;
       // eslint-disable-next-line no-alert
       var fileName = Cast$2.toString(args.FILENAME);
+      var format = args.FORMAT || 'svg';
       if (fileName === null || fileName === '') {
         fileName = 'vpen';
       }
@@ -46971,6 +46977,9 @@ var VPenBlocks = /*#__PURE__*/function () {
       });
       if (saveSVG.children().length === 0) {
         return 'no drawing';
+      }
+      if (format === 'pdf') {
+        return this._savePDFAsFile(saveSVG, fileName);
       }
       return this._saveSVGAsFile(saveSVG, fileName);
     }
@@ -47286,10 +47295,15 @@ var VPenBlocks = /*#__PURE__*/function () {
           blockType: BlockType$1.COMMAND,
           text: formatMessage({
             id: 'xcxVPen.downloadAllDrawing',
-            default: 'download all drawings named [FILENAME]',
-            description: 'download the SVG of all sprites'
+            default: 'download all drawings as [FORMAT] named [FILENAME]',
+            description: 'download all sprites as SVG or PDF'
           }),
           arguments: {
+            FORMAT: {
+              type: ArgumentType$1.STRING,
+              menu: 'fileFormatMenu',
+              defaultValue: 'svg'
+            },
             FILENAME: {
               type: ArgumentType$1.STRING,
               defaultValue: 'vpen'
@@ -47300,39 +47314,15 @@ var VPenBlocks = /*#__PURE__*/function () {
           blockType: BlockType$1.COMMAND,
           text: formatMessage({
             id: 'xcxVPen.downloadSpriteDrawing',
-            default: 'download drawing by the sprite named [FILENAME]',
-            description: 'download SVG of the sprite'
+            default: 'download drawing by the sprite as [FORMAT] named [FILENAME]',
+            description: 'download sprite drawing as SVG or PDF'
           }),
           arguments: {
-            FILENAME: {
+            FORMAT: {
               type: ArgumentType$1.STRING,
-              defaultValue: 'sprite'
-            }
-          },
-          filter: [TargetType$1.SPRITE]
-        }, {
-          opcode: 'downloadAllDrawingAsPDF',
-          blockType: BlockType$1.COMMAND,
-          text: formatMessage({
-            id: 'xcxVPen.downloadAllDrawingAsPDF',
-            default: 'download all drawings as PDF named [FILENAME]',
-            description: 'download the PDF of all sprites'
-          }),
-          arguments: {
-            FILENAME: {
-              type: ArgumentType$1.STRING,
-              defaultValue: 'vpen'
-            }
-          }
-        }, {
-          opcode: 'downloadSpriteDrawingAsPDF',
-          blockType: BlockType$1.COMMAND,
-          text: formatMessage({
-            id: 'xcxVPen.downloadSpriteDrawingAsPDF',
-            default: 'download drawing by the sprite as PDF named [FILENAME]',
-            description: 'download PDF of the sprite'
-          }),
-          arguments: {
+              menu: 'fileFormatMenu',
+              defaultValue: 'svg'
+            },
             FILENAME: {
               type: ArgumentType$1.STRING,
               defaultValue: 'sprite'
@@ -47356,6 +47346,10 @@ var VPenBlocks = /*#__PURE__*/function () {
           moveLayerDirectionMenu: {
             acceptReporters: false,
             items: 'getMoveLayerDirectionMenuItems'
+          },
+          fileFormatMenu: {
+            acceptReporters: false,
+            items: 'getFileFormatMenuItems'
           }
         }
       };
@@ -47434,6 +47428,25 @@ var VPenBlocks = /*#__PURE__*/function () {
           description: 'move pen layer down'
         }),
         value: VPenBlocks.MOVE_LAYER.DOWN
+      }];
+    }
+  }, {
+    key: "getFileFormatMenuItems",
+    value: function getFileFormatMenuItems() {
+      return [{
+        text: formatMessage({
+          id: 'xcxVPen.fileFormatMenu.svg',
+          default: 'SVG',
+          description: 'SVG file format'
+        }),
+        value: 'svg'
+      }, {
+        text: formatMessage({
+          id: 'xcxVPen.fileFormatMenu.pdf',
+          default: 'PDF',
+          description: 'PDF file format'
+        }),
+        value: 'pdf'
       }];
     }
   }], [{
