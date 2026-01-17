@@ -10,6 +10,8 @@ import translations from './translations.json';
 import blockIcon from './block-icon.png';
 import {SVG} from '@svgdotjs/svg.js';
 import FileSaver from 'file-saver';
+import jsPDF from 'jspdf';
+import 'svg2pdf.js';
 
 
 /**
@@ -1115,6 +1117,48 @@ class VPenBlocks {
     }
 
     /**
+     * Save the drawing as a PDF file.
+     * @param {SVG} svg - the SVG drawing.
+     * @param {string} fileName - the name of the file to save.
+     * @returns {Promise<string>} - a promise that resolves after the file has been saved.
+     */
+    async _savePDFAsFile (svg, fileName) {
+        try {
+            const widthMM = this.stageWidth / this.stepPerMM;
+            const heightMM = this.stageHeight / this.stepPerMM;
+            
+            // Create PDF with custom size in mm
+            const pdf = new jsPDF({
+                orientation: widthMM > heightMM ? 'landscape' : 'portrait',
+                unit: 'mm',
+                format: [widthMM, heightMM]
+            });
+            
+            // Get SVG string and parse it
+            const svgString = svg
+                .size(`${widthMM}mm`, `${heightMM}mm`)
+                .svg();
+            const parser = new DOMParser();
+            const svgElement = parser.parseFromString(svgString, 'image/svg+xml').documentElement;
+            
+            // Add SVG to PDF
+            await pdf.svg(svgElement, {
+                x: 0,
+                y: 0,
+                width: widthMM,
+                height: heightMM
+            });
+            
+            // Save PDF
+            pdf.save(`${fileName}.pdf`);
+            return 'saved';
+        } catch (error) {
+            console.error('Error saving PDF:', error);
+            return 'error';
+        }
+    }
+
+    /**
      * Add the sprite drawing group to the SVG if the sprite has a drawing.
      * @param {Target} target - the target to add the sprite drawing for.
      * @param {Container} svgContainer - the SVG container to add the sprite drawing to.
@@ -1138,12 +1182,39 @@ class VPenBlocks {
     }
 
     /**
-     * Save the sprite drawing as an SVG file.
+     * Save the sprite drawing as an SVG or PDF file.
      * @param {object} args - the block arguments.
      * @param {object} util - utility object provided by the runtime.
-     * @returns {string} - the result of saving the sprite drawing.
+     * @returns {string|Promise<string>} - the result of saving the sprite drawing.
      */
     downloadSpriteDrawing (args, util) {
+        const target = util.target;
+        let fileName = Cast.toString(args.FILENAME);
+        const format = args.FORMAT || 'svg';
+        const penState = this._penStateFor(target);
+        if (!penState || !penState.drawing) {
+            return 'no drawing';
+        }
+        // eslint-disable-next-line no-alert
+        if (fileName === null || fileName === '') {
+            fileName = target.sprite.name;
+        }
+        const saveSVG = this._createDrawingSVG();
+        this._addSpriteDrawingTo(target, saveSVG);
+        
+        if (format === 'pdf') {
+            return this._savePDFAsFile(saveSVG, fileName);
+        }
+        return this._saveSVGAsFile(saveSVG, fileName);
+    }
+
+    /**
+     * Save the sprite drawing as a PDF file.
+     * @param {object} args - the block arguments.
+     * @param {object} util - utility object provided by the runtime.
+     * @returns {Promise<string>} - the result of saving the sprite drawing.
+     */
+    downloadSpriteDrawingAsPDF (args, util) {
         const target = util.target;
         let fileName = Cast.toString(args.FILENAME);
         const penState = this._penStateFor(target);
@@ -1156,17 +1227,52 @@ class VPenBlocks {
         }
         const saveSVG = this._createDrawingSVG();
         this._addSpriteDrawingTo(target, saveSVG);
+        return this._savePDFAsFile(saveSVG, fileName);
+    }
+
+    /**
+     * Save all drawings as an SVG or PDF file.
+     * @param {object} args - the block arguments.
+     * @param {string} args.FILENAME - the name of the file to save.
+     * @param {string} args.FORMAT - the format to save (svg or pdf).
+     * @param {object} util - utility object provided by the runtime.
+     * @returns {string|Promise<string>} - the result of saving the drawing.
+     */
+    downloadAllDrawing (args, util) {
+        // eslint-disable-next-line no-alert
+        let fileName = Cast.toString(args.FILENAME);
+        const format = args.FORMAT || 'svg';
+        if (fileName === null || fileName === '') {
+            fileName = 'vpen';
+        }
+        const saveSVG = this._createDrawingSVG();
+        const saveTargets = util.runtime.targets
+            .filter(target => target.isSprite())
+            .sort((a, b) => this._getDrawableOrderFor(a) - this._getDrawableOrderFor(b));
+        if (saveTargets.length === 0) {
+            return 'no drawing';
+        }
+        saveTargets.forEach(target => {
+            this._addSpriteDrawingTo(target, saveSVG);
+        });
+        if (saveSVG.children().length === 0) {
+            return 'no drawing';
+        }
+        
+        if (format === 'pdf') {
+            return this._savePDFAsFile(saveSVG, fileName);
+        }
         return this._saveSVGAsFile(saveSVG, fileName);
     }
 
     /**
-     * Save the SVG drawing.
+     * Save all drawings as a PDF file.
      * @param {object} args - the block arguments.
-     * @param {string} args.NAME - the name of the file to save.
+     * @param {string} args.FILENAME - the name of the file to save.
      * @param {object} util - utility object provided by the runtime.
-     * @returns {string} - the result of saving the SVG drawing.
+     * @returns {Promise<string>} - the result of saving the PDF drawing.
      */
-    downloadAllDrawing (args, util) {
+    downloadAllDrawingAsPDF (args, util) {
         // eslint-disable-next-line no-alert
         let fileName = Cast.toString(args.FILENAME);
         if (fileName === null || fileName === '') {
@@ -1185,7 +1291,7 @@ class VPenBlocks {
         if (saveSVG.children().length === 0) {
             return 'no drawing';
         }
-        return this._saveSVGAsFile(saveSVG, fileName);
+        return this._savePDFAsFile(saveSVG, fileName);
     }
 
     /**
@@ -1483,10 +1589,15 @@ class VPenBlocks {
                     blockType: BlockType.COMMAND,
                     text: formatMessage({
                         id: 'xcxVPen.downloadAllDrawing',
-                        default: 'download all drawings named [FILENAME]',
-                        description: 'download the SVG of all sprites'
+                        default: 'download all drawings as [FORMAT] named [FILENAME]',
+                        description: 'download all sprites as SVG or PDF'
                     }),
                     arguments: {
+                        FORMAT: {
+                            type: ArgumentType.STRING,
+                            menu: 'fileFormatMenu',
+                            defaultValue: 'svg'
+                        },
                         FILENAME: {
                             type: ArgumentType.STRING,
                             defaultValue: 'vpen'
@@ -1498,10 +1609,15 @@ class VPenBlocks {
                     blockType: BlockType.COMMAND,
                     text: formatMessage({
                         id: 'xcxVPen.downloadSpriteDrawing',
-                        default: 'download drawing by the sprite named [FILENAME]',
-                        description: 'download SVG of the sprite'
+                        default: 'download drawing by the sprite as [FORMAT] named [FILENAME]',
+                        description: 'download sprite drawing as SVG or PDF'
                     }),
                     arguments: {
+                        FORMAT: {
+                            type: ArgumentType.STRING,
+                            menu: 'fileFormatMenu',
+                            defaultValue: 'svg'
+                        },
                         FILENAME: {
                             type: ArgumentType.STRING,
                             defaultValue: 'sprite'
@@ -1526,6 +1642,10 @@ class VPenBlocks {
                 moveLayerDirectionMenu: {
                     acceptReporters: false,
                     items: 'getMoveLayerDirectionMenuItems'
+                },
+                fileFormatMenu: {
+                    acceptReporters: false,
+                    items: 'getFileFormatMenuItems'
                 }
             }
         };
@@ -1611,6 +1731,27 @@ class VPenBlocks {
                     description: 'move pen layer down'
                 }),
                 value: VPenBlocks.MOVE_LAYER.DOWN
+            }
+        ];
+    }
+
+    getFileFormatMenuItems () {
+        return [
+            {
+                text: formatMessage({
+                    id: 'xcxVPen.fileFormatMenu.svg',
+                    default: 'SVG',
+                    description: 'SVG file format'
+                }),
+                value: 'svg'
+            },
+            {
+                text: formatMessage({
+                    id: 'xcxVPen.fileFormatMenu.pdf',
+                    default: 'PDF',
+                    description: 'PDF file format'
+                }),
+                value: 'pdf'
             }
         ];
     }

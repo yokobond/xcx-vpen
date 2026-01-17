@@ -38,6 +38,8 @@
   },
   "dependencies": {
     "@svgdotjs/svg.js": "^3.2.4",
-    "file-saver": "^2.0.5"
+    "file-saver": "^2.0.5",
+    "jspdf": "^4.0.0",
+    "svg2pdf.js": "^2.7.0"
   }
 }

@@ -81,6 +81,7 @@ const rollupOptions = {
         file: moduleFile,
         format: 'es',
         sourcemap: true,
+        inlineDynamicImports: true,
     },
     watch: {
         clearScreen: false,
