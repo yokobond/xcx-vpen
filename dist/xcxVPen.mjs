@@ -34,7 +34,7 @@ var translations$1 = {
 }
 };
 
-var version$3 = "0.3.0";
+var version$3 = "0.5.0";
 
 /**
  * This is an extension for Xcratch.
@@ -26858,6 +26858,9 @@ var en = {
 	"xcxVPen.clearAll": "erase all drawings",
 	"xcxVPen.clear": "erase drawings of this sprite",
 	"xcxVPen.eraseLast": "erase last drawing",
+	"xcxVPen.showDrawing": "show drawing",
+	"xcxVPen.hideDrawing": "hide drawing",
+	"xcxVPen.isDrawingShown": "drawing shown?",
 	"xcxVPen.penDown": "[PEN_TYPE] pen down",
 	"xcxVPen.plot": "plot",
 	"xcxVPen.setPenOpacity": "set pen opacity to [OPACITY]",
@@ -26891,6 +26894,9 @@ var ja = {
 	"xcxVPen.clearAll": "すべての描画を消す",
 	"xcxVPen.clear": "このスプライトの描画を消す",
 	"xcxVPen.eraseLast": "最後の描画を消す",
+	"xcxVPen.showDrawing": "描画を表示する",
+	"xcxVPen.hideDrawing": "描画を隠す",
+	"xcxVPen.isDrawingShown": "描画が表示されている",
 	"xcxVPen.penDown": "[PEN_TYPE]ペンを下ろす",
 	"xcxVPen.plot": "プロットする",
 	"xcxVPen.setPenOpacity": "ペンの不透明度を[OPACITY]にする",
@@ -26927,6 +26933,9 @@ var translations = {
 	"xcxVPen.clearAll": "すべて の びょうが を けす",
 	"xcxVPen.clear": "この スプライト の びょうが を けす",
 	"xcxVPen.eraseLast": "さいご の びょうが を けす",
+	"xcxVPen.showDrawing": "びょうが を ひょうじ する",
+	"xcxVPen.hideDrawing": "びょうが を かくす",
+	"xcxVPen.isDrawingShown": "びょうが が ひょうじ されている",
 	"xcxVPen.penDown": "[PEN_TYPE]ペン を 下ろす",
 	"xcxVPen.plot": "プロット する",
 	"xcxVPen.setPenOpacity": "ペン の ふとうめいど を[OPACITY]に する",
@@ -45918,6 +45927,7 @@ var VPenBlocks = /*#__PURE__*/function () {
         penState.skinID = this.runtime.renderer.createSVGSkin(this.convertSVGForPenLayer(drawing.svg()));
         penState.drawableID = this.runtime.renderer.createDrawable(StageLayering$2.PEN_LAYER);
         renderer.updateDrawableSkinId(penState.drawableID, penState.skinID);
+        renderer.updateDrawableVisible(penState.drawableID, penState.isVisible);
       }
       return penState.skinID;
     }
@@ -46788,6 +46798,63 @@ var VPenBlocks = /*#__PURE__*/function () {
     }
 
     /**
+     * Show the drawing of this sprite.
+     * @param {object} _args - the block arguments.
+     * @param {object} util - utility object provided by the runtime.
+     */
+  }, {
+    key: "showDrawing",
+    value: function showDrawing(_args, util) {
+      var target = util.target;
+      var penState = this._getPenState(target);
+      if (penState.isVisible) {
+        return; // Already visible
+      }
+      penState.isVisible = true;
+      if (penState.drawableID >= 0) {
+        this.runtime.renderer.updateDrawableVisible(penState.drawableID, true);
+        this.runtime.requestRedraw();
+      }
+    }
+
+    /**
+     * Hide the drawing of this sprite.
+     * @param {object} _args - the block arguments.
+     * @param {object} util - utility object provided by the runtime.
+     */
+  }, {
+    key: "hideDrawing",
+    value: function hideDrawing(_args, util) {
+      var target = util.target;
+      var penState = this._getPenState(target);
+      if (!penState.isVisible) {
+        return; // Already hidden
+      }
+      penState.isVisible = false;
+      if (penState.drawableID >= 0) {
+        this.runtime.renderer.updateDrawableVisible(penState.drawableID, false);
+        this.runtime.requestRedraw();
+      }
+    }
+
+    /**
+     * Returns whether the drawing of this sprite is visible.
+     * @param {object} _args - the block arguments.
+     * @param {object} util - utility object provided by the runtime.
+     * @returns {boolean} - true if the drawing is visible.
+     */
+  }, {
+    key: "isDrawingShown",
+    value: function isDrawingShown(_args, util) {
+      var target = util.target;
+      var penState = this._penStateFor(target);
+      if (!penState) {
+        return true; // Default is visible
+      }
+      return penState.isVisible;
+    }
+
+    /**
      * Clears the pen layer's contents.
      */
   }, {
@@ -46871,14 +46938,23 @@ var VPenBlocks = /*#__PURE__*/function () {
      * Add the sprite drawing group to the SVG if the sprite has a drawing.
      * @param {Target} target - the target to add the sprite drawing for.
      * @param {Container} svgContainer - the SVG container to add the sprite drawing to.
+     * @param {object} [options] - options for adding the drawing.
+     * @param {boolean} [options.includeHidden=false] - if true, include hidden drawings with visibility attribute.
      * @returns {Container?} - a new group for the sprite drawing or null.
      */
     )
   }, {
     key: "_addSpriteDrawingTo",
     value: function _addSpriteDrawingTo(target, svgContainer) {
+      var options = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : {};
+      var _options$includeHidde = options.includeHidden,
+        includeHidden = _options$includeHidde === void 0 ? false : _options$includeHidde;
       var penState = this._penStateFor(target);
       if (!penState || !penState.drawing) {
+        return null;
+      }
+      // Skip hidden drawings unless includeHidden is true
+      if (!penState.isVisible && !includeHidden) {
         return null;
       }
       var drawings = penState.drawing.children();
@@ -46887,6 +46963,9 @@ var VPenBlocks = /*#__PURE__*/function () {
       }
       var spriteGroup = svgContainer.group();
       spriteGroup.id(target.sprite.name);
+      if (!penState.isVisible) {
+        spriteGroup.attr('style', 'display:none');
+      }
       drawings.forEach(function (child) {
         spriteGroup.add(child.clone());
       });
@@ -46914,7 +46993,10 @@ var VPenBlocks = /*#__PURE__*/function () {
         fileName = target.sprite.name;
       }
       var saveSVG = this._createDrawingSVG();
-      this._addSpriteDrawingTo(target, saveSVG);
+      var includeHidden = format !== 'pdf';
+      this._addSpriteDrawingTo(target, saveSVG, {
+        includeHidden: includeHidden
+      });
       if (format === 'pdf') {
         return this._savePDFAsFile(saveSVG, fileName);
       }
@@ -46964,6 +47046,7 @@ var VPenBlocks = /*#__PURE__*/function () {
         fileName = 'vpen';
       }
       var saveSVG = this._createDrawingSVG();
+      var includeHidden = format !== 'pdf';
       var saveTargets = util.runtime.targets.filter(function (target) {
         return target.isSprite();
       }).sort(function (a, b) {
@@ -46973,7 +47056,9 @@ var VPenBlocks = /*#__PURE__*/function () {
         return 'no drawing';
       }
       saveTargets.forEach(function (target) {
-        _this4._addSpriteDrawingTo(target, saveSVG);
+        _this4._addSpriteDrawingTo(target, saveSVG, {
+          includeHidden: includeHidden
+        });
       });
       if (saveSVG.children().length === 0) {
         return 'no drawing';
@@ -47051,32 +47136,6 @@ var VPenBlocks = /*#__PURE__*/function () {
         blockIconURI: img,
         showStatusButton: false,
         blocks: [{
-          opcode: 'clearAll',
-          blockType: BlockType$1.COMMAND,
-          text: formatMessage({
-            id: 'xcxVPen.clearAll',
-            default: 'erase all drawings',
-            description: 'erase all pen trails and stamps'
-          })
-        }, {
-          opcode: 'clear',
-          blockType: BlockType$1.COMMAND,
-          text: formatMessage({
-            id: 'xcxVPen.clear',
-            default: 'erase drawings of this sprite',
-            description: 'clear the pen trails of the sprite'
-          }),
-          filter: [TargetType$1.SPRITE]
-        }, {
-          opcode: 'eraseLast',
-          blockType: BlockType$1.COMMAND,
-          text: formatMessage({
-            id: 'xcxVPen.eraseLast',
-            default: 'erase last drawing',
-            description: 'remove the last drawing of the sprite'
-          }),
-          filter: [TargetType$1.SPRITE]
-        }, '---', {
           opcode: 'stamp',
           blockType: BlockType$1.COMMAND,
           text: formatMessage({
@@ -47118,7 +47177,7 @@ var VPenBlocks = /*#__PURE__*/function () {
             description: 'plot a node of the path'
           }),
           filter: [TargetType$1.SPRITE]
-        }, {
+        }, '---', {
           opcode: 'setPenColorToColor',
           blockType: BlockType$1.COMMAND,
           text: formatMessage({
@@ -47206,7 +47265,7 @@ var VPenBlocks = /*#__PURE__*/function () {
             }
           },
           filter: [TargetType$1.SPRITE]
-        }, {
+        }, '---', {
           opcode: 'changeLayerTo',
           blockType: BlockType$1.COMMAND,
           text: formatMessage({
@@ -47239,6 +47298,59 @@ var VPenBlocks = /*#__PURE__*/function () {
               defaultValue: 1
             }
           },
+          filter: [TargetType$1.SPRITE]
+        }, '---', {
+          opcode: 'showDrawing',
+          blockType: BlockType$1.COMMAND,
+          text: formatMessage({
+            id: 'xcxVPen.showDrawing',
+            default: 'show drawing',
+            description: 'show the drawing of this sprite'
+          }),
+          filter: [TargetType$1.SPRITE]
+        }, {
+          opcode: 'hideDrawing',
+          blockType: BlockType$1.COMMAND,
+          text: formatMessage({
+            id: 'xcxVPen.hideDrawing',
+            default: 'hide drawing',
+            description: 'hide the drawing of this sprite'
+          }),
+          filter: [TargetType$1.SPRITE]
+        }, {
+          opcode: 'isDrawingShown',
+          blockType: BlockType$1.BOOLEAN,
+          text: formatMessage({
+            id: 'xcxVPen.isDrawingShown',
+            default: 'drawing shown?',
+            description: 'is the drawing of this sprite visible?'
+          }),
+          filter: [TargetType$1.SPRITE]
+        }, '---', {
+          opcode: 'clearAll',
+          blockType: BlockType$1.COMMAND,
+          text: formatMessage({
+            id: 'xcxVPen.clearAll',
+            default: 'erase all drawings',
+            description: 'erase all pen trails and stamps'
+          })
+        }, {
+          opcode: 'clear',
+          blockType: BlockType$1.COMMAND,
+          text: formatMessage({
+            id: 'xcxVPen.clear',
+            default: 'erase drawings of this sprite',
+            description: 'clear the pen trails of the sprite'
+          }),
+          filter: [TargetType$1.SPRITE]
+        }, {
+          opcode: 'eraseLast',
+          blockType: BlockType$1.COMMAND,
+          text: formatMessage({
+            id: 'xcxVPen.eraseLast',
+            default: 'erase last drawing',
+            description: 'remove the last drawing of the sprite'
+          }),
           filter: [TargetType$1.SPRITE]
         }, '---', {
           opcode: 'stepForMM',
@@ -47290,7 +47402,7 @@ var VPenBlocks = /*#__PURE__*/function () {
               defaultValue: 2
             }
           }
-        }, {
+        }, '---', {
           opcode: 'downloadAllDrawing',
           blockType: BlockType$1.COMMAND,
           text: formatMessage({
@@ -47619,7 +47731,8 @@ var VPenBlocks = /*#__PURE__*/function () {
         referencePoint: null,
         hasThinLines: false,
         _pendingSkinUpdate: null,
-        _listenerRegistered: false
+        _listenerRegistered: false,
+        isVisible: true
       };
     }
   }]);
